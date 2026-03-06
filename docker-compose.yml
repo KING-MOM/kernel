@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: kernel
+      POSTGRES_PASSWORD: kernel
+      POSTGRES_DB: kernel_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - kernel_data:/var/lib/postgresql/data
+
+  kernel:
+    build: .
+    depends_on:
+      - db
+    ports:
+      - "8088:8080"
+    environment:
+      - DATABASE_URL=postgresql://kernel:kernel@db:5432/kernel_db
+      - KERNEL_API_KEY=${KERNEL_API_KEY:-}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+    restart: always
+
+volumes:
+  kernel_data:
