@@ -28,28 +28,30 @@ export KERNEL_API_KEY=your-key   # optional but recommended
 
 ## Commands
 
-Run via the CLI wrapper: `python scripts/openclaw_kernel_tool.py <command>`
+Run via the CLI wrapper: `python ./scripts/openclaw_kernel_tool.py <command>`
+
+All paths below are relative to the skill root (the `kernel/` directory).
 
 ### `sweep` — Proactive heartbeat
 Returns all relationships where the agent should act right now.
 ```bash
-python scripts/openclaw_kernel_tool.py sweep --agent-id <id> --ts 2026-03-07T10:00:00Z
+python ./scripts/openclaw_kernel_tool.py sweep --agent-id <id> --ts 2026-03-07T10:00:00Z
 ```
 Response includes: `action`, `reason`, `confidence`, `engagement_score`, `churn_risk` per relationship.
 
 ### `decide` — Single-person decision
 ```bash
-python scripts/openclaw_kernel_tool.py decide --agent-id <id> --person-id <pid> --ts 2026-03-07T10:00:00Z
+python ./scripts/openclaw_kernel_tool.py decide --agent-id <id> --person-id <pid> --ts 2026-03-07T10:00:00Z
 ```
 
 ### `decide-batch` — Multi-person decision
 ```bash
-python scripts/openclaw_kernel_tool.py decide-batch --agent-id <id> --person-ids pid1 pid2 --ts 2026-03-07T10:00:00Z
+python ./scripts/openclaw_kernel_tool.py decide-batch --agent-id <id> --person-ids pid1 pid2 --ts 2026-03-07T10:00:00Z
 ```
 
 ### `inbound` — Record incoming message
 ```bash
-python scripts/openclaw_kernel_tool.py inbound \
+python ./scripts/openclaw_kernel_tool.py inbound \
   --agent-id <id> --person-id <pid> --message-id <mid> \
   --email user@example.com --ts 2026-03-07T10:00:00Z
 ```
@@ -57,26 +59,26 @@ python scripts/openclaw_kernel_tool.py inbound \
 ### `outbound` — Record sent message
 Returns `outbox_id` — save it to report outcomes later.
 ```bash
-python scripts/openclaw_kernel_tool.py outbound \
+python ./scripts/openclaw_kernel_tool.py outbound \
   --agent-id <id> --person-id <pid> --action SEND_FULFILLMENT \
   --reason "Paying debt" --message-id <mid> --ts 2026-03-07T10:00:00Z
 ```
 
 ### `outcome` — Report what happened after sending
 ```bash
-python scripts/openclaw_kernel_tool.py outcome \
+python ./scripts/openclaw_kernel_tool.py outcome \
   --outbox-id <oid> --replied-at 2026-03-07T11:30:00Z
 ```
 
 ### `stats` — Dashboard
 ```bash
-python scripts/openclaw_kernel_tool.py stats --agent-id <id>
+python ./scripts/openclaw_kernel_tool.py stats --agent-id <id>
 ```
 
 ### `persons` / `relationships` — Browse data
 ```bash
-python scripts/openclaw_kernel_tool.py persons --agent-id <id>
-python scripts/openclaw_kernel_tool.py relationships --agent-id <id> --sort-by churn_risk
+python ./scripts/openclaw_kernel_tool.py persons --agent-id <id>
+python ./scripts/openclaw_kernel_tool.py relationships --agent-id <id> --sort-by churn_risk
 ```
 
 ## Actions returned by decide/sweep
@@ -98,7 +100,7 @@ python scripts/openclaw_kernel_tool.py relationships --agent-id <id> --sort-by c
 import subprocess, json
 
 result = subprocess.run(
-    ["python", "scripts/openclaw_kernel_tool.py", "sweep",
+    ["python", "./scripts/openclaw_kernel_tool.py", "sweep",
      "--agent-id", AGENT_ID, "--ts", datetime.utcnow().isoformat() + "Z"],
     capture_output=True, text=True
 )
