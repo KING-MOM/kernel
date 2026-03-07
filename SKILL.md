@@ -22,7 +22,7 @@ Use this skill to manage when your agent should proactively reach out to people.
 ## Setup
 
 ```bash
-export KERNEL_API_URL=http://localhost:8080
+export KERNEL_API_URL=http://localhost:8088
 export KERNEL_API_KEY=your-key   # optional but recommended
 ```
 

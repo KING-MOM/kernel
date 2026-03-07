@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-DEFAULT_URL = "http://localhost:8080"
+DEFAULT_URL = "http://localhost:8088"
 
 # OpenClaw skill manifest for auto-discovery
 MANIFEST = {

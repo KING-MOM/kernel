@@ -7,7 +7,7 @@ Relationship physics engine for AI agents. Decides **when** to proactively reach
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8080
+uvicorn app.main:app --reload --port 8088
 ```
 
 ## Docker
@@ -17,6 +17,12 @@ docker-compose up --build
 ```
 
 Kernel available at `http://localhost:8088`.
+
+Check health:
+
+```bash
+curl -s http://localhost:8088/health
+```
 
 ## Core Concepts
 
@@ -86,9 +92,40 @@ python scripts/openclaw_kernel_tool.py stats --agent-id openclaw-main
 python scripts/openclaw_kernel_tool.py manifest  # Print OpenClaw skill manifest
 ```
 
+## First End-to-End Sweep Test
+
+Start from a clean local DB and run one inbound + sweep cycle:
+
+```bash
+rm -f kernel.db
+uvicorn app.main:app --host 0.0.0.0 --port 8088
+```
+
+In another terminal:
+
+```bash
+export KERNEL_API_URL=http://localhost:8088
+
+# If KERNEL_API_KEY is configured on the server, set the same value here.
+# export KERNEL_API_KEY=your-secret-key-here
+
+python scripts/openclaw_kernel_tool.py inbound \
+  --agent-id openclaw-main \
+  --person-id person-001 \
+  --message-id msg-001 \
+  --email person@example.com \
+  --ts 2026-03-07T19:00:00Z
+
+python scripts/openclaw_kernel_tool.py sweep \
+  --agent-id openclaw-main \
+  --ts 2026-03-07T19:05:00Z
+```
+
 ## Auth
 
-Set `KERNEL_API_KEY` env var. Requests must include `X-API-Key` header.
+`KERNEL_API_KEY` is optional.
+- If unset, API routes are open locally.
+- If set, requests must include matching `X-API-Key` header (the wrapper reads `KERNEL_API_KEY` from env).
 
 ## Configuration
 
