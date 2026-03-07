@@ -4,7 +4,14 @@ import argparse
 import json
 import os
 import sys
+import warnings
 from typing import Any, Dict, List, Optional
+
+warnings.filterwarnings(
+    "ignore",
+    message=r".*urllib3 v2 only supports OpenSSL 1\.1\.1\+.*",
+    category=Warning,
+)
 
 import requests
 
