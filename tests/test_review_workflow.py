@@ -55,6 +55,8 @@ def test_write_review_package_generates_manifest_and_files(tmp_path: Path):
     )
 
     assert manifest["review_package_schema_version"] == "1.0"
+    assert manifest["review_workflow_version"] == "1.0"
+    assert manifest["report_schema_version"] == "1.0"
     assert manifest["package_hash"]
     assert (tmp_path / "manifest.json").exists()
     assert (tmp_path / "report.md").exists()
@@ -63,6 +65,8 @@ def test_write_review_package_generates_manifest_and_files(tmp_path: Path):
     persisted = json.loads((tmp_path / "manifest.json").read_text())
     assert persisted["package_hash"] == manifest["package_hash"]
     assert "comparison_json" in persisted["files"]
+    # Ensure deterministic JSON formatting has trailing newline.
+    assert (tmp_path / "manifest.json").read_text().endswith("\n")
 
 
 def test_write_review_package_requires_provenance(tmp_path: Path):

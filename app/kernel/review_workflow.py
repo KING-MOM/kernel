@@ -8,6 +8,7 @@ from typing import Any, Dict
 
 
 REVIEW_PACKAGE_SCHEMA_VERSION = "1.0"
+REVIEW_WORKFLOW_VERSION = "1.0"
 REQUIRED_PROVENANCE_FIELDS = ("policy_version", "parameter_set_version", "corpus_id")
 
 
@@ -18,7 +19,8 @@ def validate_provenance(provenance: Dict[str, Any]) -> None:
 
 
 def _json_dump(obj: Dict[str, Any], path: Path) -> None:
-    path.write_text(json.dumps(obj, indent=2, sort_keys=True) + "\n")
+    # Deterministic JSON: stable key order, stable indentation, trailing newline.
+    path.write_text(json.dumps(obj, indent=2, sort_keys=True, ensure_ascii=True) + "\n")
 
 
 def _sha256_bytes(data: bytes) -> str:
@@ -78,6 +80,8 @@ def write_review_package(
 
     manifest = {
         "review_package_schema_version": REVIEW_PACKAGE_SCHEMA_VERSION,
+        "review_workflow_version": REVIEW_WORKFLOW_VERSION,
+        "report_schema_version": report.get("report_schema_version", "unknown"),
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "provenance": provenance,
         "package_hash": package_hash,

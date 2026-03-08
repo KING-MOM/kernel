@@ -41,6 +41,8 @@ The package directory contains canonical files:
 `manifest.json` includes:
 
 - `review_package_schema_version`
+- `review_workflow_version`
+- `report_schema_version`
 - `generated_at_utc`
 - `provenance`
 - `package_hash`
