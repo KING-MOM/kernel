@@ -1,0 +1,81 @@
+from datetime import datetime, timedelta
+
+import pytest
+from pydantic import ValidationError
+
+from app.config import Settings
+from app.kernel.constraints import ConstraintGate
+from app.kernel.contracts import (
+    ActionType,
+    Channel,
+    ConstraintReason,
+    Direction,
+    EventType,
+    ObservedEvent,
+    RelationshipFacts,
+    RelationshipInferred,
+    RelationshipState,
+)
+from app.models.core import Relationship
+from app.models.physics import decide_action_with_context
+
+
+def test_observed_event_rejects_empty_contact_id():
+    with pytest.raises(ValidationError):
+        ObservedEvent(
+            event_id="evt-1",
+            contact_id="",
+            timestamp=datetime.utcnow(),
+            channel=Channel.email,
+            direction=Direction.inbound,
+            event_type=EventType.message_received,
+        )
+
+
+def test_constraint_gate_blocks_send_actions_during_cooldown():
+    now = datetime(2026, 3, 8, 12, 0, 0)
+    state = RelationshipState(
+        relationship_id="rel-1",
+        facts=RelationshipFacts(
+            last_contact_at=now - timedelta(hours=1),
+            last_outbound_at=now - timedelta(hours=1),
+        ),
+        inferred=RelationshipInferred(),
+    )
+
+    gate = ConstraintGate(Settings(min_cooldown_hours=24.0, max_tension=0.85))
+    result = gate.evaluate(state, now)
+
+    assert ConstraintReason.hard_cooldown_active in result.reasons
+    assert ActionType.send_nudge in result.blocked_actions
+    assert ActionType.send_fulfillment in result.blocked_actions
+    assert ActionType.wait in result.allowed_actions
+
+
+def test_policy_never_returns_blocked_send_action():
+    now = datetime(2026, 3, 8, 12, 0, 0)
+    rel = Relationship(
+        id="rel-1",
+        person_id="person-1",
+        stage="onboarded",
+        trust_score=0.5,
+        interaction_tension=0.9,
+        intent_debt=0,
+        last_contact_at=now - timedelta(days=10),
+        last_outbound_at=now - timedelta(hours=1),
+        active=True,
+        dependency_blocked=False,
+        engagement_score=50.0,
+        churn_risk=0.0,
+        cadence_days=7.0,
+    )
+
+    decision = decide_action_with_context(rel, now, settings=Settings(min_cooldown_hours=24.0, max_tension=0.85))
+
+    assert decision.action_type in {ActionType.wait, ActionType.no_action, ActionType.internal_alert}
+    assert decision.action_type not in {
+        ActionType.send_fulfillment,
+        ActionType.send_nudge,
+        ActionType.send_gentle_ping,
+        ActionType.send_with_apology,
+    }

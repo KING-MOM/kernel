@@ -120,7 +120,7 @@ def test_decide_overdue_debt():
     rel = make_rel(intent_debt=1, debt_created_at=now)
     action, reason, confidence = decide_action(rel, later)
     assert action == "SEND_WITH_APOLOGY"
-    assert "Overdue" in reason
+    assert "OVERDUE" in reason.upper()
 
 
 def test_decide_blocked_debt():

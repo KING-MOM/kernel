@@ -86,6 +86,9 @@ class DecideResponse(BaseModel):
     churn_risk: Optional[float] = None
     next_decision_at: Optional[datetime] = None
     golden_hours: Optional[List[GoldenHour]] = None
+    reason_codes: Optional[List[str]] = None
+    score_breakdown: Optional[Dict[str, float]] = None
+    policy_version: Optional[str] = None
 
 
 class Decision(BaseModel):
@@ -94,6 +97,9 @@ class Decision(BaseModel):
     reason: str
     confidence: float = 0.5
     parent_message_id: Optional[str] = None
+    reason_codes: Optional[List[str]] = None
+    score_breakdown: Optional[Dict[str, float]] = None
+    policy_version: Optional[str] = None
 
 
 class DecideBatchResponse(BaseModel):
@@ -109,6 +115,9 @@ class SweepDecision(BaseModel):
     parent_message_id: Optional[str] = None
     engagement_score: float
     churn_risk: float
+    reason_codes: Optional[List[str]] = None
+    score_breakdown: Optional[Dict[str, float]] = None
+    policy_version: Optional[str] = None
 
 
 class SweepResponse(BaseModel):

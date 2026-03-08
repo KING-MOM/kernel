@@ -1,13 +1,13 @@
 import logging
 from typing import Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, asc
 
 from app.models.core import Person, Relationship, Event, Inbox, Outbox
-from app.models.physics import decay_tension, react_to_event, decide_action, compute_engagement_score
+from app.models.physics import decay_tension, react_to_event, decide_action_with_context, compute_engagement_score
 from app.models.lifecycle import transition_stage, apply_transition
 from app.models.temporal import get_golden_hours
 from app.models.feedback import record_outcome, compute_churn_risk
@@ -203,19 +203,17 @@ def decide(event: DecideRequest, db: Session = Depends(get_db)):
     now = event.ts
     rel.interaction_tension = decay_tension(rel, now)
     _update_relationship_metrics(db, rel, now)
-    action, reason, confidence = decide_action(rel, now)
+    decision = decide_action_with_context(rel, now)
+    action = decision.action_type.value
+    reason = ",".join(decision.reason_codes) if decision.reason_codes else action
+    confidence = decision.confidence
 
     parent_message_id = None
     if action.startswith("SEND_"):
         parent_message_id = latest_inbound_message_id(db, rel)
 
     # Set next_decision_at
-    if action == "WAIT":
-        rel.next_decision_at = now + timedelta(hours=4)
-    elif action.startswith("SEND_"):
-        rel.next_decision_at = now + timedelta(days=rel.cadence_days)
-    else:
-        rel.next_decision_at = now + timedelta(days=1)
+    rel.next_decision_at = decision.next_decision_at
 
     # Get golden hours for this person
     golden = get_golden_hours(db, person.id)
@@ -233,6 +231,9 @@ def decide(event: DecideRequest, db: Session = Depends(get_db)):
         churn_risk=rel.churn_risk,
         next_decision_at=rel.next_decision_at,
         golden_hours=golden_hours,
+        reason_codes=decision.reason_codes,
+        score_breakdown=decision.score_breakdown,
+        policy_version=decision.policy_version,
     )
 
 
@@ -246,7 +247,10 @@ def decide_batch(event: DecideBatchRequest, db: Session = Depends(get_db)):
 
         rel.interaction_tension = decay_tension(rel, event.ts)
         _update_relationship_metrics(db, rel, event.ts)
-        action, reason, confidence = decide_action(rel, event.ts)
+        decision = decide_action_with_context(rel, event.ts)
+        action = decision.action_type.value
+        reason = ",".join(decision.reason_codes) if decision.reason_codes else action
+        confidence = decision.confidence
 
         parent_message_id = None
         if action.startswith("SEND_"):
@@ -258,6 +262,9 @@ def decide_batch(event: DecideBatchRequest, db: Session = Depends(get_db)):
             reason=reason,
             confidence=confidence,
             parent_message_id=parent_message_id,
+            reason_codes=decision.reason_codes,
+            score_breakdown=decision.score_breakdown,
+            policy_version=decision.policy_version,
         ))
 
     db.commit()
@@ -288,10 +295,13 @@ def sweep(event: SweepRequest, db: Session = Depends(get_db)):
     for rel in ready_rels:
         rel.interaction_tension = decay_tension(rel, now)
         _update_relationship_metrics(db, rel, now)
-        action, reason, confidence = decide_action(rel, now)
+        decision = decide_action_with_context(rel, now)
+        action = decision.action_type.value
+        reason = ",".join(decision.reason_codes) if decision.reason_codes else action
+        confidence = decision.confidence
 
         if action == "NO_ACTION":
-            rel.next_decision_at = now + timedelta(days=1)
+            rel.next_decision_at = decision.next_decision_at
             continue
 
         parent_message_id = None
@@ -299,10 +309,7 @@ def sweep(event: SweepRequest, db: Session = Depends(get_db)):
             parent_message_id = latest_inbound_message_id(db, rel)
 
         # Schedule next check
-        if action == "WAIT":
-            rel.next_decision_at = now + timedelta(hours=4)
-        else:
-            rel.next_decision_at = now + timedelta(days=rel.cadence_days)
+        rel.next_decision_at = decision.next_decision_at
 
         decisions.append(SweepDecision(
             person_id=rel.person_id,
@@ -313,6 +320,9 @@ def sweep(event: SweepRequest, db: Session = Depends(get_db)):
             parent_message_id=parent_message_id,
             engagement_score=rel.engagement_score,
             churn_risk=rel.churn_risk,
+            reason_codes=decision.reason_codes,
+            score_breakdown=decision.score_breakdown,
+            policy_version=decision.policy_version,
         ))
 
     # Find the next sweep time
