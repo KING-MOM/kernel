@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+REPORT_SCHEMA_VERSION = "1.0"
+
 
 def build_governance_report(
     *,
@@ -9,6 +11,7 @@ def build_governance_report(
     promotion: Dict[str, Any],
     segmented_comparison: Optional[Dict[str, Any]] = None,
     segmented_promotion: Optional[Dict[str, Any]] = None,
+    provenance: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     global_summary = {
         "decision": promotion.get("decision"),
@@ -18,6 +21,8 @@ def build_governance_report(
     }
 
     report: Dict[str, Any] = {
+        "report_schema_version": REPORT_SCHEMA_VERSION,
+        "provenance": provenance or {},
         "traffic_share_basis": "segment coverage share is computed from total_decisions per corpus (not evaluated_decisions)",
         "global": {
             "summary": global_summary,
@@ -28,7 +33,8 @@ def build_governance_report(
     if segmented_comparison and segmented_promotion:
         segments = segmented_comparison.get("segments", {})
         segment_rows: List[Dict[str, Any]] = []
-        for segment, segment_cmp in segments.items():
+        for segment in sorted(segments.keys()):
+            segment_cmp = segments[segment]
             seg_result = segmented_promotion.get("segment_results", {}).get(segment, {})
             coverage = segment_cmp.get("coverage", {})
             segment_rows.append(
@@ -62,9 +68,17 @@ def render_markdown_report(report: Dict[str, Any]) -> str:
     global_summary = report.get("global", {}).get("summary", {})
     lines.append("# Offline Governance Report")
     lines.append("")
+    lines.append(f"- Report schema version: `{report.get('report_schema_version', 'unknown')}`")
     lines.append(f"- Global decision: `{global_summary.get('decision', 'UNKNOWN')}`")
     lines.append(f"- Global severity: `{global_summary.get('severity', 'none')}`")
     lines.append(f"- Share basis: {report.get('traffic_share_basis', '')}")
+    provenance = report.get("provenance", {})
+    if provenance:
+        lines.append(f"- Policy version: `{provenance.get('policy_version', 'unknown')}`")
+        lines.append(f"- Parameter set version: `{provenance.get('parameter_set_version', 'unknown')}`")
+        lines.append(f"- Corpus id: `{provenance.get('corpus_id', 'unknown')}`")
+        lines.append(f"- Baseline decisions: `{provenance.get('baseline_total_decisions', 'unknown')}`")
+        lines.append(f"- Candidate decisions: `{provenance.get('candidate_total_decisions', 'unknown')}`")
     lines.append("")
 
     failures = global_summary.get("failures", [])
