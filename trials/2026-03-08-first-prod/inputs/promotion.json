@@ -1,0 +1,6 @@
+{
+  "decision": "PROMOTE",
+  "severity": "none",
+  "failures": [],
+  "improvements": ["24h:progression_improved", "72h:latency_improved"]
+}

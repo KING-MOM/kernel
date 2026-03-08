@@ -1,0 +1,11 @@
+{
+  "review_package_schema_version": "1.0",
+  "review_workflow_version": "1.0",
+  "report_schema_version": "1.0",
+  "package_hash": "trial-pkg-2026-03-08-a",
+  "provenance": {
+    "policy_version": "v1.2",
+    "parameter_set_version": "pset-1",
+    "corpus_id": "trial-corpus-2026-03-08"
+  }
+}

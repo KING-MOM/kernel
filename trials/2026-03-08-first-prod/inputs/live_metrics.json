@@ -1,0 +1,11 @@
+[
+  {
+    "window": "24h",
+    "scope": "10pct/candidate/global",
+    "reply_rate": null,
+    "progression_rate": null,
+    "negative_signal_rate": null,
+    "unresolved_reply_debt_rate": null,
+    "median_response_latency_hours": null
+  }
+]

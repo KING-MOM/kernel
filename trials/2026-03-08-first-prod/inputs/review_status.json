@@ -1,0 +1,15 @@
+{
+  "review_status_schema_version": "1.0",
+  "status": "APPROVED",
+  "reviewer_id": "ops-lead@mika",
+  "reviewed_at_utc": "2026-03-08T18:00:00+00:00",
+  "rationale": "Guardrails passed and progression improved in target cohort.",
+  "package_hash": "trial-pkg-2026-03-08-a",
+  "review_workflow_version": "1.0",
+  "report_schema_version": "1.0",
+  "provenance": {
+    "policy_version": "v1.2",
+    "parameter_set_version": "pset-1",
+    "corpus_id": "trial-corpus-2026-03-08"
+  }
+}

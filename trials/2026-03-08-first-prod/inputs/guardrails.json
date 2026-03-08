@@ -1,0 +1,8 @@
+{
+  "negative_signal_rate_max": 0.10,
+  "compliance_incidents_max": 0,
+  "unresolved_reply_debt_rate_max": 0.35,
+  "median_response_latency_hours_max": 24,
+  "rollback_owner": "ops-oncall@mika",
+  "monitoring_cadence": "every_30m_first_4h_then_every_2h"
+}

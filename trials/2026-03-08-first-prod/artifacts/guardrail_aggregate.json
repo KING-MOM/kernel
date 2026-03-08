@@ -1,0 +1,16 @@
+{
+  "breadth": {
+    "unique_metric_windows": 0
+  },
+  "counts": {
+    "none": 0,
+    "pause": 0,
+    "rollback_candidate": 0
+  },
+  "decision": "NONE",
+  "reasons": [
+    "no_evaluations_in_scope"
+  ],
+  "rollout_schema_version": "1.0",
+  "severity": "none"
+}

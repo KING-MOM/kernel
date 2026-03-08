@@ -1,0 +1,23 @@
+{
+  "cohort": "10pct",
+  "corpus_id": "trial-corpus-2026-03-08",
+  "eligibility_sha256": "cfba8b32f06b9692bccf9f81c68765ee87b1ad01590c234f73b3e099bf46e62a",
+  "experiment_arm": "candidate",
+  "guardrails": {
+    "compliance_incidents_max": 0,
+    "median_response_latency_hours_max": 24,
+    "monitoring_cadence": "every_30m_first_4h_then_every_2h",
+    "negative_signal_rate_max": 0.1,
+    "rollback_owner": "ops-oncall@mika",
+    "unresolved_reply_debt_rate_max": 0.35
+  },
+  "launched_at_utc": "2026-03-08T21:05:29.087951+00:00",
+  "launched_by": "ops-lead@mika",
+  "manifest_sha256": "2fb7e38489c79cf9a5ac577005298d66853ee932207563f2106ff24aa4c061fc",
+  "package_hash": "trial-pkg-2026-03-08-a",
+  "parameter_set_version": "pset-1",
+  "policy_version": "v1.2",
+  "promotion_sha256": "2267496e303361e15f5a3bd4c1eabebd283439abf4bb86943a2c52e42ce98421",
+  "review_status_sha256": "cca316f8a6dc9b2d25e4da2eb3379ce5bf8b158c3f82e2b50607cd02a179c0b9",
+  "rollout_schema_version": "1.0"
+}

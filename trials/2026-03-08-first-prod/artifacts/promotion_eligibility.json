@@ -1,0 +1,14 @@
+{
+  "authorization": {
+    "authorized": true,
+    "reason": "approved"
+  },
+  "corpus_id": "trial-corpus-2026-03-08",
+  "eligible": true,
+  "package_hash": "trial-pkg-2026-03-08-a",
+  "parameter_set_version": "pset-1",
+  "policy_version": "v1.2",
+  "promotion_decision": "PROMOTE",
+  "reasons": [],
+  "rollout_schema_version": "1.0"
+}

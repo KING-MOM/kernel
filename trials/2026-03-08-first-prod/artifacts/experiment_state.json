@@ -1,0 +1,24 @@
+{
+  "history": [
+    {
+      "actor_id": "ops-lead@mika",
+      "from_state": "DRAFT",
+      "reason": "Promotion eligible and approved for narrow trial",
+      "reasons_validated": [],
+      "to_state": "READY",
+      "ts_utc": "2026-03-08T21:05:29.050398+00:00"
+    },
+    {
+      "actor_id": "ops-lead@mika",
+      "from_state": "READY",
+      "launch_gate_hash": "2fb7e38489c79cf9a5ac577005298d66853ee932207563f2106ff24aa4c061fc",
+      "reason": "Launch gate verified; begin controlled production trial",
+      "reasons_validated": [],
+      "to_state": "RUNNING",
+      "ts_utc": "2026-03-08T21:05:29.124291+00:00"
+    }
+  ],
+  "rollout_schema_version": "1.0",
+  "state": "RUNNING",
+  "updated_at_utc": "2026-03-08T21:05:29.124291+00:00"
+}

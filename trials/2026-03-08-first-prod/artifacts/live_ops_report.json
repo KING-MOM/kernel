@@ -1,0 +1,47 @@
+{
+  "active_guardrail_signals": [],
+  "aggregate_control_recommendation": {
+    "breadth": {
+      "unique_metric_windows": 0
+    },
+    "counts": {
+      "none": 0,
+      "pause": 0,
+      "rollback_candidate": 0
+    },
+    "decision": "NONE",
+    "reasons": [
+      "no_evaluations_in_scope"
+    ],
+    "rollout_schema_version": "1.0",
+    "severity": "none"
+  },
+  "core_live_metrics": [
+    {
+      "median_response_latency_hours": null,
+      "negative_signal_rate": null,
+      "progression_rate": null,
+      "reply_rate": null,
+      "scope": "10pct/candidate/global",
+      "unresolved_reply_debt_rate": null,
+      "window": "24h"
+    }
+  ],
+  "experiment_state": "RUNNING",
+  "launch_provenance": {
+    "cohort": "10pct",
+    "corpus_id": "trial-corpus-2026-03-08",
+    "experiment_arm": "candidate",
+    "launched_at_utc": "2026-03-08T21:05:29.087951+00:00",
+    "launched_by": "ops-lead@mika",
+    "package_hash": "trial-pkg-2026-03-08-a",
+    "parameter_set_version": "pset-1",
+    "policy_version": "v1.2"
+  },
+  "live_ops_report_schema_version": "1.0",
+  "pause_rollback_history": [],
+  "unresolved_breaches": {
+    "count": 0,
+    "stale_after_hours": 72.0
+  }
+}
