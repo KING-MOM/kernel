@@ -1,7 +1,14 @@
 from datetime import datetime, timedelta
 
 from app.config import Settings
-from app.kernel.evaluation import compare_records, compare_scorecards, compute_scorecard, evaluate_promotion
+from app.kernel.evaluation import (
+    compare_records,
+    compare_records_by_segment,
+    compare_scorecards,
+    compute_scorecard,
+    evaluate_promotion,
+    evaluate_segmented_promotion,
+)
 from app.kernel.replay import ReplayTimelineItem, annotate_attribution, replay_timeline
 from app.models.core import Relationship
 
@@ -286,3 +293,46 @@ def test_evaluate_promotion_hold_baseline_on_tie():
     assert result["decision"] == "HOLD_BASELINE"
     assert not result["failures"]
     assert not result["improvements"]
+
+
+def test_compare_records_by_segment_and_segmented_promotion():
+    t0 = datetime(2026, 1, 2, 9, 0, 0)
+    timeline = [
+        ReplayTimelineItem(ts=t0, kind="event", event_type="message_received"),
+        ReplayTimelineItem(ts=t0 + timedelta(minutes=1), kind="decision"),
+    ]
+
+    baseline_warm = replay_timeline(_make_rel(id="b-warm", stage="warm"), timeline)
+    baseline_dormant = replay_timeline(_make_rel(id="b-dorm", stage="dormant"), timeline)
+    candidate_warm = replay_timeline(_make_rel(id="c-warm", stage="warm"), timeline)
+    candidate_dormant = replay_timeline(_make_rel(id="c-dorm", stage="dormant"), timeline)
+
+    # warm improves
+    annotate_attribution(
+        baseline_warm[0], "24h", reply=False, progression=False, negative_signal=False, compliance_incident=False, reply_debt_resolved=False
+    )
+    annotate_attribution(
+        candidate_warm[0], "24h", reply=True, progression=True, negative_signal=False, compliance_incident=False, response_latency_hours=2.0, reply_debt_resolved=True
+    )
+    # dormant worsens negative signal -> should reject segmented promotion
+    annotate_attribution(
+        baseline_dormant[0], "24h", reply=False, progression=False, negative_signal=False, compliance_incident=False, reply_debt_resolved=False
+    )
+    annotate_attribution(
+        candidate_dormant[0], "24h", reply=False, progression=False, negative_signal=True, compliance_incident=False, reply_debt_resolved=False
+    )
+
+    segmented = compare_records_by_segment(
+        baseline_warm + baseline_dormant,
+        candidate_warm + candidate_dormant,
+        segment_key="stage",
+    )
+    assert set(segmented["segments"].keys()) == {"warm", "dormant"}
+
+    decision = evaluate_segmented_promotion(
+        segmented,
+        required_windows=("24h",),
+        min_evaluated_decisions=1,
+    )
+    assert decision["decision"] == "REJECT"
+    assert "dormant" in decision["segment_failures"]

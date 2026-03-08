@@ -120,6 +120,45 @@ def compare_records(
     return compare_scorecards(baseline, candidate)
 
 
+def _segment_of(record: ReplayDecisionRecord, segment_key: str) -> str:
+    facts = record.state_snapshot.get("facts", {}) if isinstance(record.state_snapshot, dict) else {}
+    value = facts.get(segment_key)
+    return str(value) if value is not None else "unknown"
+
+
+def compute_segmented_scorecards(
+    records: List[ReplayDecisionRecord],
+    *,
+    segment_key: str = "stage",
+) -> Dict[str, Dict[str, Any]]:
+    groups: Dict[str, List[ReplayDecisionRecord]] = {}
+    for record in records:
+        groups.setdefault(_segment_of(record, segment_key), []).append(record)
+    return {segment: compute_scorecard(items) for segment, items in groups.items()}
+
+
+def compare_records_by_segment(
+    baseline_records: List[ReplayDecisionRecord],
+    candidate_records: List[ReplayDecisionRecord],
+    *,
+    segment_key: str = "stage",
+) -> Dict[str, Any]:
+    baseline = compute_segmented_scorecards(baseline_records, segment_key=segment_key)
+    candidate = compute_segmented_scorecards(candidate_records, segment_key=segment_key)
+    segments = sorted(set(baseline.keys()) | set(candidate.keys()))
+    by_segment: Dict[str, Any] = {}
+
+    for segment in segments:
+        b = baseline.get(segment, {"total_decisions": 0, "send_decisions": 0, "window_metrics": {w: {} for w in WINDOWS}})
+        c = candidate.get(segment, {"total_decisions": 0, "send_decisions": 0, "window_metrics": {w: {} for w in WINDOWS}})
+        by_segment[segment] = compare_scorecards(b, c)
+
+    return {
+        "segment_key": segment_key,
+        "segments": by_segment,
+    }
+
+
 def evaluate_promotion(
     comparison: Dict[str, Any],
     *,
@@ -187,4 +226,56 @@ def evaluate_promotion(
             "min_latency_improvement_hours": min_latency_improvement_hours,
         },
         "per_window": per_window,
+    }
+
+
+def evaluate_segmented_promotion(
+    segmented_comparison: Dict[str, Any],
+    *,
+    required_segments: Tuple[str, ...] | None = None,
+    required_windows: Tuple[str, ...] = WINDOWS,
+    min_evaluated_decisions: int = 30,
+    max_negative_signal_rate_delta: float = 0.0,
+    min_progression_rate_delta: float = 0.02,
+    min_latency_improvement_hours: float = 1.0,
+) -> Dict[str, Any]:
+    segment_results: Dict[str, Any] = {}
+    segment_failures: List[str] = []
+    segment_improvements: List[str] = []
+    segments = segmented_comparison.get("segments", {})
+
+    for segment, comparison in segments.items():
+        result = evaluate_promotion(
+            comparison,
+            required_windows=required_windows,
+            min_evaluated_decisions=min_evaluated_decisions,
+            max_negative_signal_rate_delta=max_negative_signal_rate_delta,
+            min_progression_rate_delta=min_progression_rate_delta,
+            min_latency_improvement_hours=min_latency_improvement_hours,
+        )
+        segment_results[segment] = result
+        if result["decision"] == "REJECT":
+            segment_failures.append(segment)
+        if result["decision"] == "PROMOTE":
+            segment_improvements.append(segment)
+
+    missing_required = []
+    if required_segments:
+        missing_required = [s for s in required_segments if s not in segments]
+        segment_failures.extend([f"missing:{s}" for s in missing_required])
+
+    if segment_failures:
+        decision = "REJECT"
+    elif segment_improvements:
+        decision = "PROMOTE"
+    else:
+        decision = "HOLD_BASELINE"
+
+    return {
+        "decision": decision,
+        "segment_key": segmented_comparison.get("segment_key", "stage"),
+        "segment_results": segment_results,
+        "segment_failures": segment_failures,
+        "segment_improvements": segment_improvements,
+        "missing_required_segments": missing_required,
     }

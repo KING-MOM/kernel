@@ -40,3 +40,12 @@ If guardrails pass but there is no material improvement, default to baseline (`H
 - `PROMOTE`: guardrails pass and improvement requirement passes
 - `REJECT`: one or more guardrails fail
 - `HOLD_BASELINE`: guardrails pass, but no material improvement
+
+## Segment-Aware Rule (v1.1)
+
+Global gains are not enough to promote if any required segment fails guardrails.
+
+- Run the same evaluation per segment (default segment key: `stage`).
+- If any segment is `REJECT`, overall decision is `REJECT`.
+- If no segment rejects and at least one segment is `PROMOTE`, overall decision is `PROMOTE`.
+- If all segments are `HOLD_BASELINE`, overall decision is `HOLD_BASELINE`.
