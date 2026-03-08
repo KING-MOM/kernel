@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -11,6 +12,8 @@ from app.kernel.authorization import check_promotion_authorization
 
 ROLLOUT_SCHEMA_VERSION = "1.0"
 ALLOWED_STATES = {"DRAFT", "READY", "RUNNING", "PAUSED", "COMPLETED", "ROLLED_BACK"}
+ALLOWED_THRESHOLD_DIRECTIONS = {"upper", "lower"}
+ALLOWED_GUARDRAIL_DECISIONS = {"NONE", "PAUSE", "ROLLBACK_CANDIDATE"}
 
 
 def _json_dump(obj: Dict[str, Any], path: Path) -> None:
@@ -23,6 +26,187 @@ def _load_json(path: Path) -> Dict[str, Any]:
 
 def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def build_guardrail_signal(
+    *,
+    experiment_id: str,
+    package_hash: str,
+    metric_name: str,
+    metric_window: str,
+    observed_value: float,
+    threshold_value: float,
+    threshold_direction: str,  # upper|lower
+    source: str,
+    ts_utc: Optional[str] = None,
+    signal_id: Optional[str] = None,
+    source_event_id: Optional[str] = None,
+    idempotency_key: Optional[str] = None,
+) -> Dict[str, Any]:
+    direction = threshold_direction.lower().strip()
+    if direction not in ALLOWED_THRESHOLD_DIRECTIONS:
+        raise ValueError("threshold_direction must be upper or lower")
+    if not experiment_id.strip():
+        raise ValueError("experiment_id is required")
+    if not package_hash.strip():
+        raise ValueError("package_hash is required")
+    if not metric_name.strip():
+        raise ValueError("metric_name is required")
+    if not metric_window.strip():
+        raise ValueError("metric_window is required")
+    if not source.strip():
+        raise ValueError("source is required")
+    ts = ts_utc or datetime.now(timezone.utc).isoformat()
+    sid = signal_id or str(uuid.uuid4())
+    idem = idempotency_key or source_event_id or sid
+    return {
+        "rollout_schema_version": ROLLOUT_SCHEMA_VERSION,
+        "signal_id": sid,
+        "source_event_id": source_event_id,
+        "idempotency_key": idem,
+        "experiment_id": experiment_id,
+        "package_hash": package_hash,
+        "metric_name": metric_name,
+        "metric_window": metric_window,
+        "observed_value": observed_value,
+        "threshold_value": threshold_value,
+        "threshold_direction": direction,
+        "source": source,
+        "ts_utc": ts,
+    }
+
+
+def validate_guardrail_signal(signal: Dict[str, Any]) -> Dict[str, Any]:
+    reasons: List[str] = []
+    for field in (
+        "signal_id",
+        "idempotency_key",
+        "experiment_id",
+        "package_hash",
+        "metric_name",
+        "metric_window",
+        "threshold_direction",
+        "source",
+        "ts_utc",
+    ):
+        if not signal.get(field):
+            reasons.append(f"missing:{field}")
+
+    direction = str(signal.get("threshold_direction", "")).lower().strip()
+    if direction not in ALLOWED_THRESHOLD_DIRECTIONS:
+        reasons.append("invalid:threshold_direction")
+
+    for numeric in ("observed_value", "threshold_value"):
+        value = signal.get(numeric)
+        if not isinstance(value, (int, float)):
+            reasons.append(f"invalid:{numeric}")
+
+    return {"valid": len(reasons) == 0, "reasons": reasons}
+
+
+def _is_threshold_breached(*, observed_value: float, threshold_value: float, threshold_direction: str) -> bool:
+    if threshold_direction == "upper":
+        return observed_value > threshold_value
+    return observed_value < threshold_value
+
+
+def evaluate_guardrail_signal(signal: Dict[str, Any]) -> Dict[str, Any]:
+    validation = validate_guardrail_signal(signal)
+    if not validation["valid"]:
+        return {
+            "rollout_schema_version": ROLLOUT_SCHEMA_VERSION,
+            "decision": "PAUSE",
+            "severity": "hard",
+            "valid_signal": False,
+            "reasons": [f"signal_invalid:{r}" for r in validation["reasons"]],
+            "signal": signal,
+            "breach": None,
+            "evaluated_at_utc": datetime.now(timezone.utc).isoformat(),
+        }
+
+    observed = float(signal["observed_value"])
+    threshold = float(signal["threshold_value"])
+    direction = str(signal["threshold_direction"]).lower().strip()
+    breached = _is_threshold_breached(
+        observed_value=observed,
+        threshold_value=threshold,
+        threshold_direction=direction,
+    )
+
+    if not breached:
+        decision = "NONE"
+        severity = "none"
+        reasons = ["threshold_not_breached"]
+    else:
+        metric = str(signal["metric_name"]).lower()
+        is_hard_metric = metric in {"compliance_incidents", "negative_signal_rate"}
+        if is_hard_metric:
+            decision = "ROLLBACK_CANDIDATE"
+            severity = "hard"
+            reasons = ["hard_guardrail_breach", f"metric:{metric}"]
+        else:
+            decision = "PAUSE"
+            severity = "soft"
+            reasons = ["guardrail_breach_pause_recommended", f"metric:{metric}"]
+
+    return {
+        "rollout_schema_version": ROLLOUT_SCHEMA_VERSION,
+        "decision": decision,
+        "severity": severity,
+        "valid_signal": True,
+        "reasons": reasons,
+        "signal": signal,
+        "breach": {
+            "active": breached and decision in {"PAUSE", "ROLLBACK_CANDIDATE"},
+            "observed_value": observed,
+            "threshold_value": threshold,
+            "threshold_direction": direction,
+        },
+        "evaluated_at_utc": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def has_active_rollback_breach(evaluations: List[Dict[str, Any]]) -> bool:
+    """Active rollback breach = latest non-resolved ROLLBACK_CANDIDATE for any metric/window."""
+    latest_by_key: Dict[str, Dict[str, Any]] = {}
+    for ev in evaluations:
+        signal = ev.get("signal", {})
+        key = f"{signal.get('metric_name')}|{signal.get('metric_window')}|{signal.get('package_hash')}"
+        prev = latest_by_key.get(key)
+        if prev is None or str(ev.get("evaluated_at_utc", "")) > str(prev.get("evaluated_at_utc", "")):
+            latest_by_key[key] = ev
+
+    for ev in latest_by_key.values():
+        if str(ev.get("decision", "")).upper() == "ROLLBACK_CANDIDATE":
+            if not bool(ev.get("resolved", False)):
+                return True
+    return False
+
+
+def recommended_control_event_from_guardrail(
+    *,
+    evaluation: Dict[str, Any],
+    actor_id: str = "guardrail-monitor",
+) -> Optional[Dict[str, Any]]:
+    decision = str(evaluation.get("decision", "")).upper().strip()
+    signal = evaluation.get("signal", {})
+    if decision == "PAUSE":
+        return build_pause_event(
+            actor_id=actor_id,
+            reason=f"guardrail pause: {','.join(evaluation.get('reasons', []))}",
+        )
+    if decision == "ROLLBACK_CANDIDATE":
+        return build_rollback_event(
+            trigger_mode="auto",
+            actor_id=actor_id,
+            reason=f"guardrail rollback candidate: {','.join(evaluation.get('reasons', []))}",
+            threshold_source=str(signal.get("source", "unknown")),
+            metric_name=str(signal.get("metric_name", "unknown")),
+            observed_value=float(signal.get("observed_value", 0.0)),
+            threshold_value=float(signal.get("threshold_value", 0.0)),
+            breach_window=str(signal.get("metric_window", "unknown")),
+        )
+    return None
 
 
 def evaluate_promotion_eligibility(
@@ -156,6 +340,11 @@ def validate_state_transition(
     eligibility: Optional[Dict[str, Any]] = None,
     launch_gate: Optional[Dict[str, Any]] = None,
     rollback_event: Optional[Dict[str, Any]] = None,
+    resume_rationale: Optional[str] = None,
+    latest_guardrail_eval: Optional[Dict[str, Any]] = None,
+    resume_guardrail_eval_ts: Optional[str] = None,
+    active_rollback_breach: Optional[bool] = None,
+    completion_meta: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     curr = current_state.upper().strip()
     nxt = next_state.upper().strip()
@@ -185,9 +374,33 @@ def validate_state_transition(
     if curr == "READY" and nxt == "RUNNING":
         if not launch_gate:
             reasons.append("missing_launch_gate")
+    if curr == "PAUSED" and nxt == "RUNNING":
+        if not resume_rationale or not resume_rationale.strip():
+            reasons.append("missing_resume_rationale")
+        if active_rollback_breach is True:
+            reasons.append("active_rollback_breach_present")
+        if latest_guardrail_eval is None:
+            reasons.append("missing_latest_guardrail_eval")
+        else:
+            latest_ts = str(latest_guardrail_eval.get("evaluated_at_utc", ""))
+            if not latest_ts:
+                reasons.append("latest_guardrail_eval_missing_timestamp")
+            if not resume_guardrail_eval_ts or resume_guardrail_eval_ts != latest_ts:
+                reasons.append("resume_guardrail_eval_timestamp_mismatch")
+            latest_decision = str(latest_guardrail_eval.get("decision", "")).upper().strip()
+            if latest_decision == "ROLLBACK_CANDIDATE":
+                reasons.append("latest_guardrail_eval_is_rollback_candidate")
     if nxt == "ROLLED_BACK":
         if not rollback_event:
             reasons.append("missing_rollback_event")
+    if nxt == "COMPLETED":
+        required = ("runtime_hours", "sample_size", "stop_reason")
+        if not completion_meta:
+            reasons.append("missing_completion_meta")
+        else:
+            for field in required:
+                if completion_meta.get(field) in (None, "", []):
+                    reasons.append(f"missing_completion_meta_field:{field}")
 
     return {"allowed": len(reasons) == 0, "reasons": reasons}
 
@@ -201,6 +414,11 @@ def transition_experiment_state(
     eligibility: Optional[Dict[str, Any]] = None,
     launch_gate: Optional[Dict[str, Any]] = None,
     rollback_event: Optional[Dict[str, Any]] = None,
+    resume_rationale: Optional[str] = None,
+    latest_guardrail_eval: Optional[Dict[str, Any]] = None,
+    resume_guardrail_eval_ts: Optional[str] = None,
+    active_rollback_breach: Optional[bool] = None,
+    completion_meta: Optional[Dict[str, Any]] = None,
     ts_utc: Optional[str] = None,
 ) -> Dict[str, Any]:
     if not actor_id.strip():
@@ -214,6 +432,11 @@ def transition_experiment_state(
         eligibility=eligibility,
         launch_gate=launch_gate,
         rollback_event=rollback_event,
+        resume_rationale=resume_rationale,
+        latest_guardrail_eval=latest_guardrail_eval,
+        resume_guardrail_eval_ts=resume_guardrail_eval_ts,
+        active_rollback_breach=active_rollback_breach,
+        completion_meta=completion_meta,
     )
     if not validation["allowed"]:
         raise ValueError(f"transition blocked: {', '.join(validation['reasons'])}")
@@ -232,6 +455,8 @@ def transition_experiment_state(
         event["launch_gate_hash"] = launch_gate.get("manifest_sha256")
     if rollback_event is not None:
         event["rollback_event"] = rollback_event
+    if completion_meta is not None:
+        event["completion_meta"] = completion_meta
 
     history = list(state_doc.get("history", []))
     history.append(event)

@@ -5,8 +5,12 @@ import pytest
 
 from app.kernel.rollout import (
     build_launch_gate,
+    build_guardrail_signal,
     build_rollback_event,
     evaluate_promotion_eligibility,
+    evaluate_guardrail_signal,
+    has_active_rollback_breach,
+    recommended_control_event_from_guardrail,
     transition_experiment_state,
     validate_state_transition,
 )
@@ -67,6 +71,22 @@ def test_validate_state_transition_prerequisites():
     rollback_missing = validate_state_transition(current_state="RUNNING", next_state="ROLLED_BACK")
     assert rollback_missing["allowed"] is False
 
+    paused_resume_missing = validate_state_transition(current_state="PAUSED", next_state="RUNNING")
+    assert paused_resume_missing["allowed"] is False
+
+    paused_resume_blocked = validate_state_transition(
+        current_state="PAUSED",
+        next_state="RUNNING",
+        resume_rationale="investigation complete",
+        latest_guardrail_eval={"decision": "NONE", "evaluated_at_utc": "2026-03-08T12:00:00+00:00"},
+        resume_guardrail_eval_ts="2026-03-08T12:00:00+00:00",
+        active_rollback_breach=True,
+    )
+    assert paused_resume_blocked["allowed"] is False
+
+    completed_missing_meta = validate_state_transition(current_state="RUNNING", next_state="COMPLETED")
+    assert completed_missing_meta["allowed"] is False
+
 
 def test_transition_experiment_state_and_rollback_event():
     state = {"state": "DRAFT", "history": []}
@@ -108,6 +128,70 @@ def test_transition_experiment_state_and_rollback_event():
     )
     assert state["state"] == "ROLLED_BACK"
     assert state["history"][-1]["rollback_event"]["trigger_mode"] == "auto"
+
+
+def test_paused_resume_and_completed_with_meta():
+    state = {"state": "PAUSED", "history": []}
+    latest_eval = {"decision": "NONE", "evaluated_at_utc": "2026-03-08T12:00:00+00:00"}
+    state = transition_experiment_state(
+        state_doc=state,
+        next_state="RUNNING",
+        actor_id="ops",
+        reason="resume",
+        resume_rationale="breach cleared and monitor stable",
+        latest_guardrail_eval=latest_eval,
+        resume_guardrail_eval_ts="2026-03-08T12:00:00+00:00",
+        active_rollback_breach=False,
+    )
+    assert state["state"] == "RUNNING"
+
+    state = transition_experiment_state(
+        state_doc=state,
+        next_state="COMPLETED",
+        actor_id="ops",
+        reason="end experiment",
+        completion_meta={"runtime_hours": 72, "sample_size": 1200, "stop_reason": "planned end"},
+    )
+    assert state["state"] == "COMPLETED"
+    assert state["history"][-1]["completion_meta"]["sample_size"] == 1200
+
+
+def test_guardrail_signal_eval_and_recommended_event():
+    signal = build_guardrail_signal(
+        experiment_id="exp-1",
+        package_hash="pkg-1",
+        metric_name="negative_signal_rate",
+        metric_window="24h",
+        observed_value=0.18,
+        threshold_value=0.10,
+        threshold_direction="upper",
+        source="runtime-monitor",
+        source_event_id="evt-1",
+    )
+    evaluation = evaluate_guardrail_signal(signal)
+    assert evaluation["decision"] == "ROLLBACK_CANDIDATE"
+    assert evaluation["severity"] == "hard"
+    event = recommended_control_event_from_guardrail(evaluation=evaluation)
+    assert event is not None
+    assert event["event_type"] == "ROLLBACK"
+    assert event["trigger_mode"] == "auto"
+
+
+def test_active_rollback_breach_from_latest_unresolved():
+    ev1 = {
+        "decision": "ROLLBACK_CANDIDATE",
+        "resolved": False,
+        "evaluated_at_utc": "2026-03-08T12:00:00+00:00",
+        "signal": {"metric_name": "negative_signal_rate", "metric_window": "24h", "package_hash": "p1"},
+    }
+    ev2 = {
+        "decision": "NONE",
+        "resolved": False,
+        "evaluated_at_utc": "2026-03-08T13:00:00+00:00",
+        "signal": {"metric_name": "negative_signal_rate", "metric_window": "24h", "package_hash": "p1"},
+    }
+    assert has_active_rollback_breach([ev1]) is True
+    assert has_active_rollback_breach([ev1, ev2]) is False
 
 
 def test_build_launch_gate_binds_hashes(tmp_path: Path):

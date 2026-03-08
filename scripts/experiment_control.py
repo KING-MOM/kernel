@@ -7,9 +7,13 @@ from pathlib import Path
 
 from app.kernel.rollout import (
     append_transition_log,
+    build_guardrail_signal,
     build_launch_gate,
     build_rollback_event,
     evaluate_promotion_eligibility,
+    evaluate_guardrail_signal,
+    has_active_rollback_breach,
+    recommended_control_event_from_guardrail,
     transition_experiment_state,
 )
 
@@ -51,6 +55,11 @@ def main() -> int:
     trans.add_argument("--eligibility")
     trans.add_argument("--launch-gate")
     trans.add_argument("--rollback-event-json")
+    trans.add_argument("--resume-rationale")
+    trans.add_argument("--latest-guardrail-eval")
+    trans.add_argument("--resume-guardrail-eval-ts")
+    trans.add_argument("--guardrail-evals-json", help="Optional JSON list path for active breach detection")
+    trans.add_argument("--completion-meta-json")
 
     rollback = sub.add_parser("rollback-event", help="Create rollback event artifact")
     rollback.add_argument("--trigger-mode", required=True, choices=["auto", "manual"])
@@ -62,6 +71,25 @@ def main() -> int:
     rollback.add_argument("--threshold-value", required=True, type=float)
     rollback.add_argument("--breach-window", required=True)
     rollback.add_argument("--out", required=True)
+
+    signal = sub.add_parser("guardrail-signal", help="Create guardrail signal artifact")
+    signal.add_argument("--experiment-id", required=True)
+    signal.add_argument("--package-hash", required=True)
+    signal.add_argument("--metric-name", required=True)
+    signal.add_argument("--metric-window", required=True)
+    signal.add_argument("--observed-value", required=True, type=float)
+    signal.add_argument("--threshold-value", required=True, type=float)
+    signal.add_argument("--threshold-direction", required=True, choices=["upper", "lower"])
+    signal.add_argument("--source", required=True)
+    signal.add_argument("--source-event-id")
+    signal.add_argument("--idempotency-key")
+    signal.add_argument("--out", required=True)
+
+    geval = sub.add_parser("guardrail-eval", help="Evaluate guardrail signal and emit recommendation")
+    geval.add_argument("--signal", required=True)
+    geval.add_argument("--out", required=True)
+    geval.add_argument("--actor-id", default="guardrail-monitor")
+    geval.add_argument("--control-event-out", help="Optional output path for recommended control event JSON")
 
     args = parser.parse_args()
 
@@ -106,12 +134,57 @@ def main() -> int:
         print(json.dumps({"status": "ok", "out": args.out}, sort_keys=True))
         return 0
 
+    if args.cmd == "guardrail-signal":
+        artifact = build_guardrail_signal(
+            experiment_id=args.experiment_id,
+            package_hash=args.package_hash,
+            metric_name=args.metric_name,
+            metric_window=args.metric_window,
+            observed_value=args.observed_value,
+            threshold_value=args.threshold_value,
+            threshold_direction=args.threshold_direction,
+            source=args.source,
+            source_event_id=args.source_event_id,
+            idempotency_key=args.idempotency_key,
+        )
+        _dump(artifact, args.out)
+        print(json.dumps({"status": "ok", "out": args.out, "signal_id": artifact["signal_id"]}, sort_keys=True))
+        return 0
+
+    if args.cmd == "guardrail-eval":
+        signal_obj = _load(args.signal)
+        evaluation = evaluate_guardrail_signal(signal_obj)
+        _dump(evaluation, args.out)
+        control_event = recommended_control_event_from_guardrail(evaluation=evaluation, actor_id=args.actor_id)
+        if args.control_event_out and control_event is not None:
+            _dump(control_event, args.control_event_out)
+        print(
+            json.dumps(
+                {
+                    "status": "ok",
+                    "out": args.out,
+                    "decision": evaluation["decision"],
+                    "control_event_emitted": bool(args.control_event_out and control_event is not None),
+                },
+                sort_keys=True,
+            )
+        )
+        return 0
+
     # transition
     state_path = Path(args.state_file)
     state_doc = _load(args.state_file) if state_path.exists() else {"state": "DRAFT", "history": []}
     eligibility = _load(args.eligibility) if args.eligibility else None
     launch_gate = _load(args.launch_gate) if args.launch_gate else None
     rollback_event = _load(args.rollback_event_json) if args.rollback_event_json else None
+    latest_guardrail_eval = _load(args.latest_guardrail_eval) if args.latest_guardrail_eval else None
+    completion_meta = _load(args.completion_meta_json) if args.completion_meta_json else None
+    active_rollback_breach = None
+    if args.guardrail_evals_json:
+        guardrail_evals = _load(args.guardrail_evals_json)
+        if not isinstance(guardrail_evals, list):
+            raise ValueError("guardrail_evals_json must be a JSON list")
+        active_rollback_breach = has_active_rollback_breach(guardrail_evals)
 
     next_doc = transition_experiment_state(
         state_doc=state_doc,
@@ -121,6 +194,11 @@ def main() -> int:
         eligibility=eligibility,
         launch_gate=launch_gate,
         rollback_event=rollback_event,
+        resume_rationale=args.resume_rationale,
+        latest_guardrail_eval=latest_guardrail_eval,
+        resume_guardrail_eval_ts=args.resume_guardrail_eval_ts,
+        active_rollback_breach=active_rollback_breach,
+        completion_meta=completion_meta,
     )
     append_transition_log(state_path=state_path, state_doc=next_doc)
     print(json.dumps({"status": "ok", "state": next_doc["state"], "state_file": args.state_file}, sort_keys=True))

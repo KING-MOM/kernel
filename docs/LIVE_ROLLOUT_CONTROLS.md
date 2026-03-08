@@ -31,6 +31,26 @@ Manual pause and rollback are distinct:
   - observed metric and threshold
   - breach window and breach timestamp
 
+## 3.1 Guardrail signal ingestion
+
+Guardrail signal artifact requires:
+
+- signal identifiers (`signal_id`, `idempotency_key`, optional `source_event_id`)
+- experiment binding (`experiment_id`)
+- package binding (`package_hash`)
+- metric fields (`metric_name`, `metric_window`)
+- observed/threshold values
+- threshold direction (`upper` or `lower`)
+- source and timestamp
+
+Evaluator output decisions:
+
+- `NONE`
+- `PAUSE`
+- `ROLLBACK_CANDIDATE`
+
+Evaluator emits machine-readable reasons and severity.
+
 ## 4. State machine
 
 States:
@@ -41,7 +61,9 @@ Prerequisites enforced:
 
 - `DRAFT -> READY`: requires eligible promotion
 - `READY -> RUNNING`: requires launch gate artifact
+- `PAUSED -> RUNNING`: requires resume rationale, latest guardrail evaluation timestamp match, and no active rollback breach
 - `* -> ROLLED_BACK`: requires rollback event
+- `* -> COMPLETED`: requires completion metadata (`runtime_hours`, `sample_size`, `stop_reason`)
 
 All transitions append immutable history entries.
 
@@ -52,4 +74,10 @@ Use `scripts/experiment_control.py`:
 - `eligibility` to write `eligibility.json`
 - `launch-gate` to write `launch_gate.json`
 - `rollback-event` to write rollback event artifact
+- `guardrail-signal` to write guardrail signal artifact
+- `guardrail-eval` to evaluate signal and optionally emit recommended control event
 - `transition` to apply state transitions with prerequisite validation
+
+Active rollback breach definition:
+
+- latest non-resolved evaluation per metric/window/package has decision `ROLLBACK_CANDIDATE`
