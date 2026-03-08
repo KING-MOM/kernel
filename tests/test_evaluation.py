@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 from app.config import Settings
-from app.kernel.evaluation import compute_scorecard
+from app.kernel.evaluation import compare_records, compare_scorecards, compute_scorecard
 from app.kernel.replay import ReplayTimelineItem, annotate_attribution, replay_timeline
 from app.models.core import Relationship
 
@@ -108,3 +108,120 @@ def test_compute_scorecard_ignores_pending_windows():
     for window in ("24h", "72h", "7d"):
         assert scorecard["window_metrics"][window]["evaluated_decisions"] == 0
         assert scorecard["window_metrics"][window]["reply_rate"] is None
+
+
+def test_compare_scorecards_window_deltas():
+    baseline = {
+        "total_decisions": 10,
+        "send_decisions": 6,
+        "window_metrics": {
+            "24h": {
+                "evaluated_decisions": 6,
+                "reply_rate": 0.5,
+                "progression_rate": 0.3,
+                "negative_signal_rate": 0.2,
+                "unresolved_reply_debt_rate": 0.4,
+                "compliance_incidents": 2,
+                "median_response_latency_hours": 10.0,
+            },
+            "72h": {
+                "evaluated_decisions": 6,
+                "reply_rate": 0.6,
+                "progression_rate": 0.35,
+                "negative_signal_rate": 0.2,
+                "unresolved_reply_debt_rate": 0.3,
+                "compliance_incidents": 1,
+                "median_response_latency_hours": 12.0,
+            },
+            "7d": {
+                "evaluated_decisions": 6,
+                "reply_rate": 0.7,
+                "progression_rate": 0.4,
+                "negative_signal_rate": 0.25,
+                "unresolved_reply_debt_rate": 0.25,
+                "compliance_incidents": 1,
+                "median_response_latency_hours": 18.0,
+            },
+        },
+    }
+    candidate = {
+        "total_decisions": 10,
+        "send_decisions": 6,
+        "window_metrics": {
+            "24h": {
+                "evaluated_decisions": 6,
+                "reply_rate": 0.7,
+                "progression_rate": 0.5,
+                "negative_signal_rate": 0.1,
+                "unresolved_reply_debt_rate": 0.2,
+                "compliance_incidents": 1,
+                "median_response_latency_hours": 8.0,
+            },
+            "72h": {
+                "evaluated_decisions": 6,
+                "reply_rate": 0.75,
+                "progression_rate": 0.45,
+                "negative_signal_rate": 0.12,
+                "unresolved_reply_debt_rate": 0.2,
+                "compliance_incidents": 1,
+                "median_response_latency_hours": 9.0,
+            },
+            "7d": {
+                "evaluated_decisions": 6,
+                "reply_rate": 0.8,
+                "progression_rate": 0.55,
+                "negative_signal_rate": 0.2,
+                "unresolved_reply_debt_rate": 0.15,
+                "compliance_incidents": 0,
+                "median_response_latency_hours": 14.0,
+            },
+        },
+    }
+
+    diff = compare_scorecards(baseline, candidate)
+    d24 = diff["window_deltas"]["24h"]["metrics"]
+    assert d24["reply_rate"]["delta"] == 0.2
+    assert d24["progression_rate"]["delta"] == 0.2
+    assert d24["negative_signal_rate"]["delta"] == -0.1
+    assert d24["unresolved_reply_debt_rate"]["delta"] == -0.2
+    assert d24["compliance_incidents"]["delta"] == -1
+    assert d24["median_response_latency_hours"]["delta"] == -2.0
+
+
+def test_compare_records_end_to_end():
+    t0 = datetime(2026, 1, 2, 9, 0, 0)
+    timeline = [
+        ReplayTimelineItem(ts=t0, kind="event", event_type="message_received"),
+        ReplayTimelineItem(ts=t0 + timedelta(minutes=1), kind="decision"),
+    ]
+
+    baseline = replay_timeline(_make_rel(id="rel-base"), timeline)
+    candidate = replay_timeline(_make_rel(id="rel-cand"), timeline)
+
+    annotate_attribution(
+        baseline[0],
+        "24h",
+        reply=False,
+        progression=False,
+        negative_signal=True,
+        compliance_incident=False,
+        response_latency_hours=None,
+        reply_debt_resolved=False,
+    )
+    annotate_attribution(
+        candidate[0],
+        "24h",
+        reply=True,
+        progression=True,
+        negative_signal=False,
+        compliance_incident=False,
+        response_latency_hours=3.0,
+        reply_debt_resolved=True,
+    )
+
+    result = compare_records(baseline, candidate)
+    d24 = result["window_deltas"]["24h"]["metrics"]
+    assert d24["reply_rate"]["delta"] == 1.0
+    assert d24["progression_rate"]["delta"] == 1.0
+    assert d24["negative_signal_rate"]["delta"] == -1.0
+    assert d24["unresolved_reply_debt_rate"]["delta"] == -1.0
