@@ -86,6 +86,9 @@ def main() -> int:
     signal.add_argument("--source", required=True)
     signal.add_argument("--source-event-id")
     signal.add_argument("--idempotency-key")
+    signal.add_argument("--cohort")
+    signal.add_argument("--experiment-arm")
+    signal.add_argument("--segment")
     signal.add_argument("--out", required=True)
 
     geval = sub.add_parser("guardrail-eval", help="Evaluate guardrail signal and emit recommendation")
@@ -98,7 +101,12 @@ def main() -> int:
     gagg.add_argument("--evaluations-json", required=True, help="Path to JSON list of guardrail evaluations")
     gagg.add_argument("--experiment-id")
     gagg.add_argument("--package-hash")
+    gagg.add_argument("--cohort")
+    gagg.add_argument("--experiment-arm")
+    gagg.add_argument("--segment")
+    gagg.add_argument("--stale-after-hours", type=float, default=72.0)
     gagg.add_argument("--pause-escalation-threshold", type=int, default=3)
+    gagg.add_argument("--pause-thresholds-by-metric-json", help="Optional JSON dict metric->threshold")
     gagg.add_argument("--out", required=True)
     gagg.add_argument("--actor-id", default="guardrail-aggregator")
     gagg.add_argument("--control-event-out")
@@ -162,6 +170,9 @@ def main() -> int:
             source=args.source,
             source_event_id=args.source_event_id,
             idempotency_key=args.idempotency_key,
+            cohort=args.cohort,
+            experiment_arm=args.experiment_arm,
+            segment=args.segment,
         )
         _dump(artifact, args.out)
         print(json.dumps({"status": "ok", "out": args.out, "signal_id": artifact["signal_id"]}, sort_keys=True))
@@ -195,7 +206,14 @@ def main() -> int:
             evaluations,
             experiment_id=args.experiment_id,
             package_hash=args.package_hash,
+            cohort=args.cohort,
+            experiment_arm=args.experiment_arm,
+            segment=args.segment,
             pause_escalation_threshold=args.pause_escalation_threshold,
+            pause_escalation_threshold_by_metric=_load(args.pause_thresholds_by_metric_json)
+            if args.pause_thresholds_by_metric_json
+            else None,
+            stale_after_hours=args.stale_after_hours,
         )
         _dump(aggregate, args.out)
         control_event = recommended_control_event_from_aggregate(
@@ -237,7 +255,7 @@ def main() -> int:
         guardrail_evals = _load(args.guardrail_evals_json)
         if not isinstance(guardrail_evals, list):
             raise ValueError("guardrail_evals_json must be a JSON list")
-        active_rollback_breach = has_active_rollback_breach(guardrail_evals)
+        active_rollback_breach = has_active_rollback_breach(guardrail_evals, stale_after_hours=72.0)
 
     next_doc = transition_experiment_state(
         state_doc=state_doc,

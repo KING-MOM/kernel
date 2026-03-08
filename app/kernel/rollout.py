@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -28,6 +28,38 @@ def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _parse_ts_utc(ts: str) -> datetime:
+    normalized = ts.replace("Z", "+00:00")
+    return datetime.fromisoformat(normalized)
+
+
+def _is_unresolved_evaluation(
+    evaluation: Dict[str, Any],
+    *,
+    now_utc: Optional[datetime] = None,
+    stale_after_hours: Optional[float] = None,
+) -> bool:
+    """
+    Central unresolved semantics used by aggregation and resume safety:
+    - decision is actionable (`PAUSE` or `ROLLBACK_CANDIDATE`)
+    - not explicitly resolved
+    - not stale (if stale window configured)
+    """
+    decision = str(evaluation.get("decision", "")).upper().strip()
+    if decision not in {"PAUSE", "ROLLBACK_CANDIDATE"}:
+        return False
+    if bool(evaluation.get("resolved", False)):
+        return False
+    if stale_after_hours is None:
+        return True
+    ts = str(evaluation.get("evaluated_at_utc", "")).strip()
+    if not ts:
+        return False
+    current = now_utc or datetime.now(timezone.utc)
+    age = current - _parse_ts_utc(ts)
+    return age <= timedelta(hours=stale_after_hours)
+
+
 def build_guardrail_signal(
     *,
     experiment_id: str,
@@ -42,6 +74,9 @@ def build_guardrail_signal(
     signal_id: Optional[str] = None,
     source_event_id: Optional[str] = None,
     idempotency_key: Optional[str] = None,
+    cohort: Optional[str] = None,
+    experiment_arm: Optional[str] = None,
+    segment: Optional[str] = None,
 ) -> Dict[str, Any]:
     direction = threshold_direction.lower().strip()
     if direction not in ALLOWED_THRESHOLD_DIRECTIONS:
@@ -73,6 +108,9 @@ def build_guardrail_signal(
         "threshold_direction": direction,
         "source": source,
         "ts_utc": ts,
+        "cohort": cohort,
+        "experiment_arm": experiment_arm,
+        "segment": segment,
     }
 
 
@@ -166,8 +204,12 @@ def evaluate_guardrail_signal(signal: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def has_active_rollback_breach(evaluations: List[Dict[str, Any]]) -> bool:
-    """Active rollback breach = latest non-resolved ROLLBACK_CANDIDATE for any metric/window."""
+def has_active_rollback_breach(
+    evaluations: List[Dict[str, Any]],
+    *,
+    stale_after_hours: float = 72.0,
+) -> bool:
+    """Active rollback breach = latest unresolved, non-stale ROLLBACK_CANDIDATE for any metric/window/package."""
     latest_by_key: Dict[str, Dict[str, Any]] = {}
     for ev in evaluations:
         signal = ev.get("signal", {})
@@ -177,8 +219,8 @@ def has_active_rollback_breach(evaluations: List[Dict[str, Any]]) -> bool:
             latest_by_key[key] = ev
 
     for ev in latest_by_key.values():
-        if str(ev.get("decision", "")).upper() == "ROLLBACK_CANDIDATE":
-            if not bool(ev.get("resolved", False)):
+        if _is_unresolved_evaluation(ev, stale_after_hours=stale_after_hours):
+            if str(ev.get("decision", "")).upper() == "ROLLBACK_CANDIDATE":
                 return True
     return False
 
@@ -214,7 +256,12 @@ def aggregate_guardrail_evaluations(
     *,
     experiment_id: Optional[str] = None,
     package_hash: Optional[str] = None,
+    cohort: Optional[str] = None,
+    experiment_arm: Optional[str] = None,
+    segment: Optional[str] = None,
     pause_escalation_threshold: int = 3,
+    pause_escalation_threshold_by_metric: Optional[Dict[str, int]] = None,
+    stale_after_hours: float = 72.0,
 ) -> Dict[str, Any]:
     filtered: List[Dict[str, Any]] = []
     for ev in evaluations:
@@ -222,6 +269,12 @@ def aggregate_guardrail_evaluations(
         if experiment_id and signal.get("experiment_id") != experiment_id:
             continue
         if package_hash and signal.get("package_hash") != package_hash:
+            continue
+        if cohort and signal.get("cohort") != cohort:
+            continue
+        if experiment_arm and signal.get("experiment_arm") != experiment_arm:
+            continue
+        if segment and signal.get("segment") != segment:
             continue
         filtered.append(ev)
 
@@ -235,7 +288,24 @@ def aggregate_guardrail_evaluations(
             "breadth": {"unique_metric_windows": 0},
         }
 
-    unresolved = [ev for ev in filtered if not bool(ev.get("resolved", False))]
+    unresolved = [ev for ev in filtered if _is_unresolved_evaluation(ev, stale_after_hours=stale_after_hours)]
+    if not unresolved:
+        return {
+            "rollout_schema_version": ROLLOUT_SCHEMA_VERSION,
+            "decision": "NONE",
+            "severity": "none",
+            "reasons": ["no_unresolved_non_stale_evaluations", f"stale_after_hours:{stale_after_hours}"],
+            "counts": {"rollback_candidate": 0, "pause": 0, "none": 0},
+            "breadth": {"unique_metric_windows": 0},
+            "scope": {
+                "experiment_id": experiment_id,
+                "package_hash": package_hash,
+                "cohort": cohort,
+                "experiment_arm": experiment_arm,
+                "segment": segment,
+            },
+        }
+
     rollback_candidates = [ev for ev in unresolved if str(ev.get("decision", "")).upper() == "ROLLBACK_CANDIDATE"]
     pauses = [ev for ev in unresolved if str(ev.get("decision", "")).upper() == "PAUSE"]
     nones = [ev for ev in unresolved if str(ev.get("decision", "")).upper() == "NONE"]
@@ -253,21 +323,36 @@ def aggregate_guardrail_evaluations(
         decision = "ROLLBACK_CANDIDATE"
         severity = "hard"
         reasons.append("rollback_candidate_present")
-    elif len(pauses) >= pause_escalation_threshold:
-        # Escalation rule: repeated medium breaches aggregate into rollback candidate.
-        decision = "ROLLBACK_CANDIDATE"
-        severity = "hard"
-        reasons.append("pause_escalated_to_rollback_candidate")
-        reasons.append(f"pause_count:{len(pauses)}")
-    elif pauses:
-        decision = "PAUSE"
-        severity = "soft"
-        reasons.append("pause_present")
     else:
-        reasons.append("no_actionable_breach")
+        # Escalation rule: repeated medium breaches can aggregate into rollback candidate.
+        thresholds_by_metric = {k.lower(): int(v) for k, v in (pause_escalation_threshold_by_metric or {}).items()}
+        pause_counts_by_metric: Dict[str, int] = {}
+        for ev in pauses:
+            metric = str(ev.get("signal", {}).get("metric_name", "")).lower()
+            pause_counts_by_metric[metric] = pause_counts_by_metric.get(metric, 0) + 1
+        escalated_metric: Optional[str] = None
+        for metric, count in pause_counts_by_metric.items():
+            threshold_for_metric = thresholds_by_metric.get(metric, pause_escalation_threshold)
+            if count >= threshold_for_metric:
+                escalated_metric = metric
+                reasons.append("pause_escalated_to_rollback_candidate")
+                reasons.append(f"pause_metric:{metric}")
+                reasons.append(f"pause_metric_count:{count}")
+                reasons.append(f"pause_metric_threshold:{threshold_for_metric}")
+                break
+        if escalated_metric is not None:
+            decision = "ROLLBACK_CANDIDATE"
+            severity = "hard"
+        elif pauses:
+            decision = "PAUSE"
+            severity = "soft"
+            reasons.append("pause_present")
+        else:
+            reasons.append("no_actionable_breach")
 
     reasons.append(f"latest_eval_ts:{latest_eval.get('evaluated_at_utc')}")
     reasons.append(f"breadth_metric_windows:{len(unique_metric_windows)}")
+    reasons.append(f"stale_after_hours:{stale_after_hours}")
     return {
         "rollout_schema_version": ROLLOUT_SCHEMA_VERSION,
         "decision": decision,
@@ -279,6 +364,13 @@ def aggregate_guardrail_evaluations(
             "none": len(nones),
         },
         "breadth": {"unique_metric_windows": len(unique_metric_windows)},
+        "scope": {
+            "experiment_id": experiment_id,
+            "package_hash": package_hash,
+            "cohort": cohort,
+            "experiment_arm": experiment_arm,
+            "segment": segment,
+        },
         "latest_evaluation": latest_eval,
     }
 
@@ -327,6 +419,9 @@ def ingest_monitor_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
         ts_utc=payload.get("ts_utc"),
         source_event_id=payload.get("source_event_id"),
         idempotency_key=payload.get("idempotency_key"),
+        cohort=payload.get("cohort"),
+        experiment_arm=payload.get("experiment_arm"),
+        segment=payload.get("segment"),
     )
 
 

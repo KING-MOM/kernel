@@ -38,6 +38,7 @@ Guardrail signal artifact requires:
 - signal identifiers (`signal_id`, `idempotency_key`, optional `source_event_id`)
 - experiment binding (`experiment_id`)
 - package binding (`package_hash`)
+- optional scope keys (`cohort`, `experiment_arm`, `segment`)
 - metric fields (`metric_name`, `metric_window`)
 - observed/threshold values
 - threshold direction (`upper` or `lower`)
@@ -61,6 +62,7 @@ Monitor integration rule:
 Aggregation unit:
 
 - per `experiment_id` and `package_hash` scope
+- optional refinement by `cohort`, `experiment_arm`, `segment`
 
 Deterministic precedence:
 
@@ -73,6 +75,17 @@ Tie-break metadata:
 
 - latest evaluation timestamp
 - breach breadth (`unique metric_name|metric_window` count)
+
+Unresolved semantics (single source of truth):
+
+- decision is actionable (`PAUSE` or `ROLLBACK_CANDIDATE`)
+- evaluation is not marked `resolved=true`
+- evaluation is not stale (default stale expiry `72h`)
+
+Per-metric escalation:
+
+- optional metric-specific pause thresholds override the default escalation threshold
+- fallback uses default threshold when metric override is absent
 
 ## 4. State machine
 
@@ -105,4 +118,4 @@ Use `scripts/experiment_control.py`:
 
 Active rollback breach definition:
 
-- latest non-resolved evaluation per metric/window/package has decision `ROLLBACK_CANDIDATE`
+- latest unresolved, non-stale evaluation per metric/window/package has decision `ROLLBACK_CANDIDATE`

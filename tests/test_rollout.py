@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -181,20 +182,23 @@ def test_guardrail_signal_eval_and_recommended_event():
 
 
 def test_active_rollback_breach_from_latest_unresolved():
+    now = datetime.now(timezone.utc)
+    t1 = now.isoformat()
+    t2 = (now + timedelta(seconds=1)).isoformat()
     ev1 = {
         "decision": "ROLLBACK_CANDIDATE",
         "resolved": False,
-        "evaluated_at_utc": "2026-03-08T12:00:00+00:00",
+        "evaluated_at_utc": t1,
         "signal": {"metric_name": "negative_signal_rate", "metric_window": "24h", "package_hash": "p1"},
     }
     ev2 = {
         "decision": "NONE",
         "resolved": False,
-        "evaluated_at_utc": "2026-03-08T13:00:00+00:00",
+        "evaluated_at_utc": t2,
         "signal": {"metric_name": "negative_signal_rate", "metric_window": "24h", "package_hash": "p1"},
     }
-    assert has_active_rollback_breach([ev1]) is True
-    assert has_active_rollback_breach([ev1, ev2]) is False
+    assert has_active_rollback_breach([ev1], stale_after_hours=1_000_000) is True
+    assert has_active_rollback_breach([ev1, ev2], stale_after_hours=1_000_000) is False
 
 
 def test_aggregate_guardrail_evaluations_precedence_and_escalation():
@@ -217,7 +221,13 @@ def test_aggregate_guardrail_evaluations_precedence_and_escalation():
 
     # Soft pauses can escalate by count threshold.
     pauses = [dict(ev_pause, evaluated_at_utc=f"2026-03-08T12:0{i}:00+00:00") for i in (1, 2, 3)]
-    agg2 = aggregate_guardrail_evaluations(pauses, experiment_id="exp1", package_hash="p1", pause_escalation_threshold=3)
+    agg2 = aggregate_guardrail_evaluations(
+        pauses,
+        experiment_id="exp1",
+        package_hash="p1",
+        pause_escalation_threshold=3,
+        stale_after_hours=1_000_000,
+    )
     assert agg2["decision"] == "ROLLBACK_CANDIDATE"
     assert any("pause_escalated_to_rollback_candidate" in r for r in agg2["reasons"])
 
@@ -237,11 +247,63 @@ def test_ingest_monitor_payload_normalizes_to_signal():
         "threshold_direction": "upper",
         "source": "monitor.live",
         "source_event_id": "evt-99",
+        "cohort": "10pct",
+        "experiment_arm": "candidate",
+        "segment": "warm",
     }
     signal = ingest_monitor_payload(payload)
     assert signal["experiment_id"] == "exp9"
     assert signal["package_hash"] == "pkg9"
     assert signal["idempotency_key"] == "evt-99"
+    assert signal["cohort"] == "10pct"
+    assert signal["experiment_arm"] == "candidate"
+    assert signal["segment"] == "warm"
+
+
+def test_aggregate_scope_and_metric_override_and_stale_expiry():
+    base = {
+        "resolved": False,
+        "signal": {
+            "package_hash": "p1",
+            "experiment_id": "exp1",
+            "cohort": "10pct",
+            "experiment_arm": "candidate",
+            "segment": "warm",
+            "source": "m",
+            "observed_value": 4.0,
+            "threshold_value": 3.0,
+            "metric_window": "24h",
+        },
+    }
+    fresh_ts = datetime.now(timezone.utc).isoformat()
+    stale_ts = "2020-01-01T00:00:00+00:00"
+    ev_latency1 = dict(base, decision="PAUSE", evaluated_at_utc=fresh_ts, signal={**base["signal"], "metric_name": "latency"})
+    ev_latency2 = dict(base, decision="PAUSE", evaluated_at_utc=fresh_ts, signal={**base["signal"], "metric_name": "latency"})
+    ev_latency3_stale = dict(base, decision="PAUSE", evaluated_at_utc=stale_ts, signal={**base["signal"], "metric_name": "latency"})
+    ev_other_scope = dict(base, decision="PAUSE", evaluated_at_utc=fresh_ts, signal={**base["signal"], "cohort": "50pct", "metric_name": "latency"})
+
+    # stale pause ignored; only two fresh pauses remain => no escalation with default threshold 3
+    agg = aggregate_guardrail_evaluations(
+        [ev_latency1, ev_latency2, ev_latency3_stale, ev_other_scope],
+        experiment_id="exp1",
+        package_hash="p1",
+        cohort="10pct",
+        experiment_arm="candidate",
+        segment="warm",
+        stale_after_hours=72.0,
+    )
+    assert agg["decision"] == "PAUSE"
+
+    # per-metric threshold override for latency to 2 escalates
+    agg2 = aggregate_guardrail_evaluations(
+        [ev_latency1, ev_latency2],
+        experiment_id="exp1",
+        package_hash="p1",
+        pause_escalation_threshold=3,
+        pause_escalation_threshold_by_metric={"latency": 2},
+        stale_after_hours=72.0,
+    )
+    assert agg2["decision"] == "ROLLBACK_CANDIDATE"
 
 
 def test_build_launch_gate_binds_hashes(tmp_path: Path):
