@@ -34,6 +34,17 @@ curl -s http://localhost:8088/health
 - **Golden Hours**: Learned optimal contact windows per person
 - **Lifecycle Stages**: onboarded → warm → engaged → value_delivered → dormant → churned
 
+## Theory
+
+- Math + hypotheses (objective functions, constraints, decay, aggregation):
+  - [docs/KERNEL_MATH_AND_HYPOTHESES.md](/Users/mau/Documents/New project/kernel/docs/KERNEL_MATH_AND_HYPOTHESES.md)
+- Live rollout control policy:
+  - [docs/LIVE_ROLLOUT_CONTROLS.md](/Users/mau/Documents/New project/kernel/docs/LIVE_ROLLOUT_CONTROLS.md)
+- Ops execution artifacts:
+  - [docs/OPS_RUNBOOK_V1.md](/Users/mau/Documents/New project/kernel/docs/OPS_RUNBOOK_V1.md)
+  - [docs/FIRST_CONTROLLED_PROD_RUN.md](/Users/mau/Documents/New project/kernel/docs/FIRST_CONTROLLED_PROD_RUN.md)
+  - [docs/POST_RUN_BUNDLE_PIPELINE.md](/Users/mau/Documents/New project/kernel/docs/POST_RUN_BUNDLE_PIPELINE.md)
+
 ## API (v1)
 
 ### Write Endpoints
@@ -141,8 +152,14 @@ LOG_FORMAT=json            # json or text
 
 Per-agent overrides via the `PhysicsConfig` table.
 
+Project-wide persistent parameter ops (outside this repo):
+- `../ops/KERNEL_PARAMETER_SYSTEM.md`
+- `../ops/KERNEL_PARAMETER_REGISTRY.md`
+- `../ops/KERNEL_PARAMETER_CHANGELOG.md`
+- `../ops/KERNEL_EXPERIMENT_QUEUE.md`
+
 ## Tests
 
 ```bash
-pytest -v  # 73 tests
+python -m pytest -v  # currently 111 tests
 ```
