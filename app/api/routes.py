@@ -234,6 +234,7 @@ def decide(event: DecideRequest, db: Session = Depends(get_db)):
         reason_codes=decision.reason_codes,
         score_breakdown=decision.score_breakdown,
         policy_version=decision.policy_version,
+        parameter_set_version=decision.parameter_set_version,
     )
 
 
@@ -265,6 +266,7 @@ def decide_batch(event: DecideBatchRequest, db: Session = Depends(get_db)):
             reason_codes=decision.reason_codes,
             score_breakdown=decision.score_breakdown,
             policy_version=decision.policy_version,
+            parameter_set_version=decision.parameter_set_version,
         ))
 
     db.commit()
@@ -323,6 +325,7 @@ def sweep(event: SweepRequest, db: Session = Depends(get_db)):
             reason_codes=decision.reason_codes,
             score_breakdown=decision.score_breakdown,
             policy_version=decision.policy_version,
+            parameter_set_version=decision.parameter_set_version,
         ))
 
     # Find the next sweep time

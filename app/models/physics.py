@@ -129,6 +129,8 @@ def _fallback_decision(rel: Relationship, now: datetime, reason_codes: Optional[
 def decide_action_with_context(rel: Relationship, now: datetime, settings: Optional[Settings] = None) -> DecisionResult:
     """Decide action with explicit ConstraintGate + explainability metadata."""
     s = settings or get_settings()
+    policy_version = getattr(s, "policy_version", "v1.1")
+    parameter_set_version = getattr(s, "parameter_set_version", "baseline-2026-03-08")
     state = build_relationship_state(rel)
     gate = ConstraintGate(s).evaluate(state, now)
     allowed_actions = set(gate.allowed_actions)
@@ -144,6 +146,8 @@ def decide_action_with_context(rel: Relationship, now: datetime, settings: Optio
                 reason_codes=["DEBT_BLOCKED_DEPENDENCY", *[r.value for r in gate.reasons]],
                 score_breakdown={"debt_priority": 1.0, "constraint_penalty": -1.0},
                 next_decision_at=_compute_next_decision_at(rel, now, ActionType.internal_alert),
+                policy_version=policy_version,
+                parameter_set_version=parameter_set_version,
                 confidence=0.9,
             )
 
@@ -157,6 +161,8 @@ def decide_action_with_context(rel: Relationship, now: datetime, settings: Optio
                         reason_codes=["OVERDUE_DEBT", *[r.value for r in gate.reasons]],
                         score_breakdown={"debt_priority": 1.0, "overdue_bonus": 0.2},
                         next_decision_at=_compute_next_decision_at(rel, now, ActionType.send_with_apology),
+                        policy_version=policy_version,
+                        parameter_set_version=parameter_set_version,
                         confidence=0.95,
                     )
             return DecisionResult(
@@ -165,6 +171,8 @@ def decide_action_with_context(rel: Relationship, now: datetime, settings: Optio
                 reason_codes=["PAY_DEBT", *[r.value for r in gate.reasons]],
                 score_breakdown={"debt_priority": 1.0},
                 next_decision_at=_compute_next_decision_at(rel, now, ActionType.send_fulfillment),
+                policy_version=policy_version,
+                parameter_set_version=parameter_set_version,
                 confidence=0.9,
             )
         return _fallback_decision(rel, now, [*["DEBT_PRESENT_BUT_BLOCKED"], *[r.value for r in gate.reasons]])
@@ -222,6 +230,8 @@ def decide_action_with_context(rel: Relationship, now: datetime, settings: Optio
         reason_codes=[winner.value, *[r.value for r in gate.reasons]],
         score_breakdown={k.value: float(v) for k, v in action_scores.items()},
         next_decision_at=_compute_next_decision_at(rel, now, winner),
+        policy_version=policy_version,
+        parameter_set_version=parameter_set_version,
         confidence=confidence,
     )
 

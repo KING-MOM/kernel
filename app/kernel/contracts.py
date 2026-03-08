@@ -112,4 +112,5 @@ class DecisionResult(BaseModel):
     score_breakdown: Dict[str, float] = Field(default_factory=dict)
     next_decision_at: datetime
     policy_version: str = "v1.1"
+    parameter_set_version: str = "baseline-2026-03-08"
     confidence: float = Field(0.5, ge=0.0, le=1.0)

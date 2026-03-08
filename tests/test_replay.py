@@ -55,6 +55,11 @@ def test_replay_timeline_deterministic_decisions_and_hashes():
     # Decision 2: immediate post-send => cooldown blocks sends => wait/no action
     assert "HARD_COOLDOWN_ACTIVE" in run1[1].constraint_reasons
     assert run1[1].decision.action_type.value in {"WAIT", "NO_ACTION"}
+    assert run1[0].policy_version == "v1.1"
+    assert run1[0].parameter_set_version == "baseline-2026-03-08"
+    assert set(run1[0].attribution.keys()) == {"24h", "72h", "7d"}
+    assert run1[0].temporal_context["timezone"] == "UTC"
+    assert "within_business_hours" in run1[0].temporal_context
 
     # Deterministic replay should generate identical hashes and actions
     assert [r.state_hash for r in run1] == [r.state_hash for r in run2]

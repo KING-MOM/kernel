@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_format: str = "json"
     version: str = "0.2.0"
+    policy_version: str = "v1.1"
+    parameter_set_version: str = "baseline-2026-03-08"
 
     # Physics defaults (overridable per-agent via PhysicsConfig in Phase 2)
     lambda_decay: float = 0.15

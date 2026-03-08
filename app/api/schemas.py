@@ -89,6 +89,7 @@ class DecideResponse(BaseModel):
     reason_codes: Optional[List[str]] = None
     score_breakdown: Optional[Dict[str, float]] = None
     policy_version: Optional[str] = None
+    parameter_set_version: Optional[str] = None
 
 
 class Decision(BaseModel):
@@ -100,6 +101,7 @@ class Decision(BaseModel):
     reason_codes: Optional[List[str]] = None
     score_breakdown: Optional[Dict[str, float]] = None
     policy_version: Optional[str] = None
+    parameter_set_version: Optional[str] = None
 
 
 class DecideBatchResponse(BaseModel):
@@ -118,6 +120,7 @@ class SweepDecision(BaseModel):
     reason_codes: Optional[List[str]] = None
     score_breakdown: Optional[Dict[str, float]] = None
     policy_version: Optional[str] = None
+    parameter_set_version: Optional[str] = None
 
 
 class SweepResponse(BaseModel):
