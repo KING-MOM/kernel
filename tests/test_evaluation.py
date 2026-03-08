@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 from app.config import Settings
-from app.kernel.evaluation import compare_records, compare_scorecards, compute_scorecard
+from app.kernel.evaluation import compare_records, compare_scorecards, compute_scorecard, evaluate_promotion
 from app.kernel.replay import ReplayTimelineItem, annotate_attribution, replay_timeline
 from app.models.core import Relationship
 
@@ -225,3 +225,64 @@ def test_compare_records_end_to_end():
     assert d24["progression_rate"]["delta"] == 1.0
     assert d24["negative_signal_rate"]["delta"] == -1.0
     assert d24["unresolved_reply_debt_rate"]["delta"] == -1.0
+
+
+def _base_comparison() -> dict:
+    return {
+        "window_deltas": {
+            "24h": {
+                "evaluated_decisions": {"baseline": 40, "candidate": 40, "delta": 0},
+                "metrics": {
+                    "progression_rate": {"baseline": 0.3, "candidate": 0.35, "delta": 0.05},
+                    "negative_signal_rate": {"baseline": 0.1, "candidate": 0.1, "delta": 0.0},
+                    "compliance_incidents": {"baseline": 1, "candidate": 1, "delta": 0},
+                    "median_response_latency_hours": {"baseline": 12.0, "candidate": 10.0, "delta": -2.0},
+                },
+            },
+            "72h": {
+                "evaluated_decisions": {"baseline": 40, "candidate": 40, "delta": 0},
+                "metrics": {
+                    "progression_rate": {"baseline": 0.35, "candidate": 0.37, "delta": 0.02},
+                    "negative_signal_rate": {"baseline": 0.12, "candidate": 0.11, "delta": -0.01},
+                    "compliance_incidents": {"baseline": 1, "candidate": 1, "delta": 0},
+                    "median_response_latency_hours": {"baseline": 15.0, "candidate": 14.0, "delta": -1.0},
+                },
+            },
+            "7d": {
+                "evaluated_decisions": {"baseline": 40, "candidate": 40, "delta": 0},
+                "metrics": {
+                    "progression_rate": {"baseline": 0.4, "candidate": 0.42, "delta": 0.02},
+                    "negative_signal_rate": {"baseline": 0.15, "candidate": 0.15, "delta": 0.0},
+                    "compliance_incidents": {"baseline": 1, "candidate": 1, "delta": 0},
+                    "median_response_latency_hours": {"baseline": 20.0, "candidate": 18.5, "delta": -1.5},
+                },
+            },
+        }
+    }
+
+
+def test_evaluate_promotion_promote():
+    comparison = _base_comparison()
+    result = evaluate_promotion(comparison)
+    assert result["decision"] == "PROMOTE"
+    assert not result["failures"]
+    assert result["improvements"]
+
+
+def test_evaluate_promotion_reject_on_guardrail():
+    comparison = _base_comparison()
+    comparison["window_deltas"]["24h"]["metrics"]["negative_signal_rate"]["delta"] = 0.05
+    result = evaluate_promotion(comparison)
+    assert result["decision"] == "REJECT"
+    assert any("negative_signal_worsened" in f for f in result["failures"])
+
+
+def test_evaluate_promotion_hold_baseline_on_tie():
+    comparison = _base_comparison()
+    for w in ("24h", "72h", "7d"):
+        comparison["window_deltas"][w]["metrics"]["progression_rate"]["delta"] = 0.0
+        comparison["window_deltas"][w]["metrics"]["median_response_latency_hours"]["delta"] = 0.0
+    result = evaluate_promotion(comparison)
+    assert result["decision"] == "HOLD_BASELINE"
+    assert not result["failures"]
+    assert not result["improvements"]

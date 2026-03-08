@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from statistics import median
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from app.kernel.replay import ReplayDecisionRecord
 
@@ -118,3 +118,73 @@ def compare_records(
     baseline = compute_scorecard(baseline_records)
     candidate = compute_scorecard(candidate_records)
     return compare_scorecards(baseline, candidate)
+
+
+def evaluate_promotion(
+    comparison: Dict[str, Any],
+    *,
+    required_windows: Tuple[str, ...] = WINDOWS,
+    min_evaluated_decisions: int = 30,
+    max_negative_signal_rate_delta: float = 0.0,
+    min_progression_rate_delta: float = 0.02,
+    min_latency_improvement_hours: float = 1.0,
+) -> Dict[str, Any]:
+    failures: List[str] = []
+    improvements: List[str] = []
+    per_window: Dict[str, Any] = {}
+
+    for window in required_windows:
+        data = comparison["window_deltas"].get(window, {})
+        eval_meta = data.get("evaluated_decisions", {})
+        metrics = data.get("metrics", {})
+        candidate_eval = eval_meta.get("candidate")
+
+        window_failures: List[str] = []
+        window_improvements: List[str] = []
+
+        if not isinstance(candidate_eval, int) or candidate_eval < min_evaluated_decisions:
+            window_failures.append(f"{window}:insufficient_evaluated_decisions")
+
+        compliance_delta = metrics.get("compliance_incidents", {}).get("delta")
+        if compliance_delta is not None and compliance_delta > 0:
+            window_failures.append(f"{window}:compliance_worsened")
+
+        negative_delta = metrics.get("negative_signal_rate", {}).get("delta")
+        if negative_delta is not None and negative_delta > max_negative_signal_rate_delta:
+            window_failures.append(f"{window}:negative_signal_worsened")
+
+        progression_delta = metrics.get("progression_rate", {}).get("delta")
+        if progression_delta is not None and progression_delta >= min_progression_rate_delta:
+            window_improvements.append(f"{window}:progression_improved")
+
+        latency_delta = metrics.get("median_response_latency_hours", {}).get("delta")
+        if latency_delta is not None and latency_delta <= -min_latency_improvement_hours:
+            window_improvements.append(f"{window}:latency_improved")
+
+        failures.extend(window_failures)
+        improvements.extend(window_improvements)
+        per_window[window] = {
+            "failures": window_failures,
+            "improvements": window_improvements,
+        }
+
+    if failures:
+        decision = "REJECT"
+    elif improvements:
+        decision = "PROMOTE"
+    else:
+        decision = "HOLD_BASELINE"
+
+    return {
+        "decision": decision,
+        "failures": failures,
+        "improvements": improvements,
+        "thresholds": {
+            "required_windows": list(required_windows),
+            "min_evaluated_decisions": min_evaluated_decisions,
+            "max_negative_signal_rate_delta": max_negative_signal_rate_delta,
+            "min_progression_rate_delta": min_progression_rate_delta,
+            "min_latency_improvement_hours": min_latency_improvement_hours,
+        },
+        "per_window": per_window,
+    }
