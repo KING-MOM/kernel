@@ -148,14 +148,28 @@ def compare_records_by_segment(
     segments = sorted(set(baseline.keys()) | set(candidate.keys()))
     by_segment: Dict[str, Any] = {}
 
+    total_baseline = len(baseline_records)
+    total_candidate = len(candidate_records)
+
     for segment in segments:
         b = baseline.get(segment, {"total_decisions": 0, "send_decisions": 0, "window_metrics": {w: {} for w in WINDOWS}})
         c = candidate.get(segment, {"total_decisions": 0, "send_decisions": 0, "window_metrics": {w: {} for w in WINDOWS}})
         by_segment[segment] = compare_scorecards(b, c)
+        by_segment[segment]["coverage"] = {
+            "baseline_total_decisions": b.get("total_decisions", 0),
+            "candidate_total_decisions": c.get("total_decisions", 0),
+            "baseline_share": (b.get("total_decisions", 0) / total_baseline) if total_baseline else 0.0,
+            "candidate_share": (c.get("total_decisions", 0) / total_candidate) if total_candidate else 0.0,
+        }
 
     return {
         "segment_key": segment_key,
         "segments": by_segment,
+        "coverage_summary": {
+            "baseline_total_decisions": total_baseline,
+            "candidate_total_decisions": total_candidate,
+            "segments_count": len(segments),
+        },
     }
 
 
@@ -207,8 +221,10 @@ def evaluate_promotion(
             "improvements": window_improvements,
         }
 
+    severity = "none"
     if failures:
         decision = "REJECT"
+        severity = "hard"
     elif improvements:
         decision = "PROMOTE"
     else:
@@ -226,6 +242,7 @@ def evaluate_promotion(
             "min_latency_improvement_hours": min_latency_improvement_hours,
         },
         "per_window": per_window,
+        "severity": severity,
     }
 
 
@@ -235,6 +252,7 @@ def evaluate_segmented_promotion(
     required_segments: Tuple[str, ...] | None = None,
     required_windows: Tuple[str, ...] = WINDOWS,
     min_evaluated_decisions: int = 30,
+    min_evaluated_decisions_by_segment: Dict[str, int] | None = None,
     max_negative_signal_rate_delta: float = 0.0,
     min_progression_rate_delta: float = 0.02,
     min_latency_improvement_hours: float = 1.0,
@@ -242,13 +260,19 @@ def evaluate_segmented_promotion(
     segment_results: Dict[str, Any] = {}
     segment_failures: List[str] = []
     segment_improvements: List[str] = []
+    segment_reject_severities: Dict[str, str] = {}
     segments = segmented_comparison.get("segments", {})
 
     for segment, comparison in segments.items():
+        segment_min = (
+            min_evaluated_decisions_by_segment.get(segment, min_evaluated_decisions)
+            if min_evaluated_decisions_by_segment
+            else min_evaluated_decisions
+        )
         result = evaluate_promotion(
             comparison,
             required_windows=required_windows,
-            min_evaluated_decisions=min_evaluated_decisions,
+            min_evaluated_decisions=segment_min,
             max_negative_signal_rate_delta=max_negative_signal_rate_delta,
             min_progression_rate_delta=min_progression_rate_delta,
             min_latency_improvement_hours=min_latency_improvement_hours,
@@ -256,6 +280,7 @@ def evaluate_segmented_promotion(
         segment_results[segment] = result
         if result["decision"] == "REJECT":
             segment_failures.append(segment)
+            segment_reject_severities[segment] = result.get("severity", "hard")
         if result["decision"] == "PROMOTE":
             segment_improvements.append(segment)
 
@@ -276,6 +301,7 @@ def evaluate_segmented_promotion(
         "segment_key": segmented_comparison.get("segment_key", "stage"),
         "segment_results": segment_results,
         "segment_failures": segment_failures,
+        "segment_reject_severities": segment_reject_severities,
         "segment_improvements": segment_improvements,
         "missing_required_segments": missing_required,
     }

@@ -328,6 +328,8 @@ def test_compare_records_by_segment_and_segmented_promotion():
         segment_key="stage",
     )
     assert set(segmented["segments"].keys()) == {"warm", "dormant"}
+    assert segmented["coverage_summary"]["baseline_total_decisions"] == 2
+    assert segmented["segments"]["warm"]["coverage"]["baseline_share"] == 0.5
 
     decision = evaluate_segmented_promotion(
         segmented,
@@ -336,3 +338,48 @@ def test_compare_records_by_segment_and_segmented_promotion():
     )
     assert decision["decision"] == "REJECT"
     assert "dormant" in decision["segment_failures"]
+
+
+def test_segmented_promotion_per_segment_min_counts():
+    # Warm passes; dormant is low-volume and fails only if we enforce a higher segment min.
+    segmented = {
+        "segment_key": "stage",
+        "segments": {
+            "warm": {
+                "window_deltas": {
+                    "24h": {
+                        "evaluated_decisions": {"baseline": 50, "candidate": 50, "delta": 0},
+                        "metrics": {
+                            "progression_rate": {"baseline": 0.3, "candidate": 0.35, "delta": 0.05},
+                            "negative_signal_rate": {"baseline": 0.1, "candidate": 0.1, "delta": 0.0},
+                            "compliance_incidents": {"baseline": 1, "candidate": 1, "delta": 0},
+                            "median_response_latency_hours": {"baseline": 10.0, "candidate": 8.0, "delta": -2.0},
+                        },
+                    }
+                }
+            },
+            "dormant": {
+                "window_deltas": {
+                    "24h": {
+                        "evaluated_decisions": {"baseline": 3, "candidate": 3, "delta": 0},
+                        "metrics": {
+                            "progression_rate": {"baseline": 0.2, "candidate": 0.2, "delta": 0.0},
+                            "negative_signal_rate": {"baseline": 0.1, "candidate": 0.1, "delta": 0.0},
+                            "compliance_incidents": {"baseline": 0, "candidate": 0, "delta": 0},
+                            "median_response_latency_hours": {"baseline": 12.0, "candidate": 12.0, "delta": 0.0},
+                        },
+                    }
+                }
+            },
+        },
+    }
+
+    result = evaluate_segmented_promotion(
+        segmented,
+        required_windows=("24h",),
+        min_evaluated_decisions=1,
+        min_evaluated_decisions_by_segment={"dormant": 5},
+    )
+    assert result["decision"] == "REJECT"
+    assert "dormant" in result["segment_failures"]
+    assert result["segment_reject_severities"]["dormant"] == "hard"

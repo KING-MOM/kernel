@@ -49,3 +49,18 @@ Global gains are not enough to promote if any required segment fails guardrails.
 - If any segment is `REJECT`, overall decision is `REJECT`.
 - If no segment rejects and at least one segment is `PROMOTE`, overall decision is `PROMOTE`.
 - If all segments are `HOLD_BASELINE`, overall decision is `HOLD_BASELINE`.
+
+### Volume-aware refinement
+
+- Support per-segment minimum sample overrides (for example, stricter thresholds for noisy low-volume segments).
+- If a segment fails its minimum evaluated decision requirement, that segment is `REJECT`.
+
+### Coverage metadata
+
+Segment comparisons must include:
+
+- per-segment baseline/candidate decision counts
+- per-segment traffic share of total decisions
+- total corpus counts for baseline and candidate
+
+This prevents “segment verdict without segment weight” during review.
