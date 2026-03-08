@@ -64,3 +64,19 @@ Segment comparisons must include:
 - total corpus counts for baseline and candidate
 
 This prevents “segment verdict without segment weight” during review.
+
+Traffic share basis:
+
+- `baseline_share` = `segment.baseline_total_decisions / baseline_total_decisions`
+- `candidate_share` = `segment.candidate_total_decisions / candidate_total_decisions`
+- Shares are based on `total_decisions`, not `evaluated_decisions`.
+
+### Severity semantics (v1)
+
+- `hard`: promotion-blocking guardrail failure
+- `none`: no guardrail failure
+
+Downstream behavior:
+
+- Any `hard` reject blocks promotion.
+- Severity is currently interpretive for reporting; future versions may add `soft` and `insufficient_data`.
