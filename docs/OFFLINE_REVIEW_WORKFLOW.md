@@ -49,3 +49,30 @@ The package directory contains canonical files:
 - per-file hashes and sizes
 
 `package_hash` is computed from deterministic per-file hashes so reviewers can verify artifact integrity.
+
+## Promotion authorization
+
+Use `scripts/review_authorization.py` to record and validate promotion authorization:
+
+```bash
+python3 scripts/review_authorization.py decide \
+  --manifest /path/review-package/manifest.json \
+  --out /path/review-package/review_status.json \
+  --status APPROVED \
+  --reviewer-id reviewer@example.com \
+  --rationale "Guardrails passed; progression improved in warm and engaged segments."
+```
+
+Check authorization (exit code `0` only when promotion is authorized):
+
+```bash
+python3 scripts/review_authorization.py check \
+  --manifest /path/review-package/manifest.json \
+  --review-status /path/review-package/review_status.json
+```
+
+Rules:
+
+- Approval is bound to exact `package_hash`.
+- `APPROVED`, `REJECTED`, and `SUPERSEDED` require rationale.
+- Promotion is authorized only when status is `APPROVED` and hash matches.
