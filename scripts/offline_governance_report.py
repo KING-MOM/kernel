@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from app.kernel.reporting import build_governance_report, render_markdown_report
+from app.kernel.review_workflow import write_review_package
 
 
 def main() -> int:
@@ -18,6 +19,7 @@ def main() -> int:
     parser.add_argument("--policy-version", help="Policy version for provenance")
     parser.add_argument("--parameter-set-version", help="Parameter set version for provenance")
     parser.add_argument("--provenance-json", help="Optional path to provenance JSON to merge")
+    parser.add_argument("--package-out-dir", help="Optional output directory to write full review package")
     parser.add_argument("--out", help="Optional output markdown path")
     args = parser.parse_args()
 
@@ -46,6 +48,19 @@ def main() -> int:
         provenance=provenance,
     )
     md = render_markdown_report(report)
+
+    if args.package_out_dir:
+        manifest = write_review_package(
+            out_dir=Path(args.package_out_dir),
+            report=report,
+            report_markdown=md,
+            comparison=comparison,
+            promotion=promotion,
+            segmented_comparison=segmented_comparison,
+            segmented_promotion=segmented_promotion,
+        )
+        print(json.dumps({"status": "ok", "manifest_path": manifest["manifest_path"], "package_hash": manifest["package_hash"]}))
+        return 0
 
     if args.out:
         Path(args.out).write_text(md)
