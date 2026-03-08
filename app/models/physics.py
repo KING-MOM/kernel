@@ -8,10 +8,8 @@ from app.kernel.contracts import (
     ActionType,
     DecisionResult,
     PressureClass,
-    RelationshipFacts,
-    RelationshipInferred,
-    RelationshipState,
 )
+from app.kernel.reducers import build_relationship_state
 from app.models.core import Relationship
 
 
@@ -101,30 +99,6 @@ def compute_urgency_score(rel: Relationship, now: datetime) -> float:
         urgency = min(1.0, urgency * (1.0 + churn))
 
     return urgency
-
-
-def build_relationship_state(rel: Relationship) -> RelationshipState:
-    """Adapter from DB model to strict decision-state contract."""
-    return RelationshipState(
-        relationship_id=str(rel.id or "unknown"),
-        person_id=str(rel.person_id) if rel.person_id else None,
-        facts=RelationshipFacts(
-            last_contact_at=rel.last_contact_at,
-            last_inbound_at=rel.last_inbound_at,
-            last_outbound_at=rel.last_outbound_at,
-            debt_created_at=rel.debt_created_at,
-            active=bool(rel.active),
-            dependency_blocked=bool(rel.dependency_blocked),
-            stage=rel.stage or "onboarded",
-        ),
-        inferred=RelationshipInferred(
-            trust_score=rel.trust_score,
-            tension_score=rel.interaction_tension,
-            reply_debt=rel.intent_debt,
-            engagement_score=getattr(rel, "engagement_score", 50.0) or 50.0,
-            churn_risk=getattr(rel, "churn_risk", 0.0) or 0.0,
-        ),
-    )
 
 
 def _compute_next_decision_at(rel: Relationship, now: datetime, action: ActionType) -> datetime:
