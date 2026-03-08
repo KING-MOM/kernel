@@ -4,12 +4,15 @@ from pathlib import Path
 import pytest
 
 from app.kernel.rollout import (
+    aggregate_guardrail_evaluations,
     build_launch_gate,
     build_guardrail_signal,
+    ingest_monitor_payload,
     build_rollback_event,
     evaluate_promotion_eligibility,
     evaluate_guardrail_signal,
     has_active_rollback_breach,
+    recommended_control_event_from_aggregate,
     recommended_control_event_from_guardrail,
     transition_experiment_state,
     validate_state_transition,
@@ -192,6 +195,53 @@ def test_active_rollback_breach_from_latest_unresolved():
     }
     assert has_active_rollback_breach([ev1]) is True
     assert has_active_rollback_breach([ev1, ev2]) is False
+
+
+def test_aggregate_guardrail_evaluations_precedence_and_escalation():
+    # Hard breach dominates.
+    ev_hard = {
+        "decision": "ROLLBACK_CANDIDATE",
+        "resolved": False,
+        "evaluated_at_utc": "2026-03-08T12:01:00+00:00",
+        "signal": {"metric_name": "negative_signal_rate", "metric_window": "24h", "package_hash": "p1", "experiment_id": "exp1", "source": "m", "observed_value": 0.2, "threshold_value": 0.1},
+    }
+    ev_pause = {
+        "decision": "PAUSE",
+        "resolved": False,
+        "evaluated_at_utc": "2026-03-08T12:02:00+00:00",
+        "signal": {"metric_name": "latency", "metric_window": "24h", "package_hash": "p1", "experiment_id": "exp1", "source": "m", "observed_value": 5.0, "threshold_value": 3.0},
+    }
+    agg = aggregate_guardrail_evaluations([ev_hard, ev_pause], experiment_id="exp1", package_hash="p1")
+    assert agg["decision"] == "ROLLBACK_CANDIDATE"
+    assert agg["severity"] == "hard"
+
+    # Soft pauses can escalate by count threshold.
+    pauses = [dict(ev_pause, evaluated_at_utc=f"2026-03-08T12:0{i}:00+00:00") for i in (1, 2, 3)]
+    agg2 = aggregate_guardrail_evaluations(pauses, experiment_id="exp1", package_hash="p1", pause_escalation_threshold=3)
+    assert agg2["decision"] == "ROLLBACK_CANDIDATE"
+    assert any("pause_escalated_to_rollback_candidate" in r for r in agg2["reasons"])
+
+    rec_event = recommended_control_event_from_aggregate(aggregate_result=agg2)
+    assert rec_event is not None
+    assert rec_event["event_type"] == "ROLLBACK"
+
+
+def test_ingest_monitor_payload_normalizes_to_signal():
+    payload = {
+        "experiment_id": "exp9",
+        "package_hash": "pkg9",
+        "metric_name": "negative_signal_rate",
+        "metric_window": "72h",
+        "observed_value": 0.11,
+        "threshold_value": 0.10,
+        "threshold_direction": "upper",
+        "source": "monitor.live",
+        "source_event_id": "evt-99",
+    }
+    signal = ingest_monitor_payload(payload)
+    assert signal["experiment_id"] == "exp9"
+    assert signal["package_hash"] == "pkg9"
+    assert signal["idempotency_key"] == "evt-99"
 
 
 def test_build_launch_gate_binds_hashes(tmp_path: Path):

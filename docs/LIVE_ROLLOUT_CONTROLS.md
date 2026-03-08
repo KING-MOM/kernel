@@ -51,6 +51,29 @@ Evaluator output decisions:
 
 Evaluator emits machine-readable reasons and severity.
 
+Monitor integration rule:
+
+- runtime monitor payloads must normalize into the same canonical `guardrail_signal` schema
+- no parallel runtime-only schema is allowed
+
+## 3.2 Multi-signal aggregation policy (v1)
+
+Aggregation unit:
+
+- per `experiment_id` and `package_hash` scope
+
+Deterministic precedence:
+
+1. any unresolved `ROLLBACK_CANDIDATE` => aggregate `ROLLBACK_CANDIDATE`
+2. else, if unresolved `PAUSE` count >= threshold (default 3) => escalate to `ROLLBACK_CANDIDATE`
+3. else, any unresolved `PAUSE` => aggregate `PAUSE`
+4. else => `NONE`
+
+Tie-break metadata:
+
+- latest evaluation timestamp
+- breach breadth (`unique metric_name|metric_window` count)
+
 ## 4. State machine
 
 States:
@@ -76,6 +99,8 @@ Use `scripts/experiment_control.py`:
 - `rollback-event` to write rollback event artifact
 - `guardrail-signal` to write guardrail signal artifact
 - `guardrail-eval` to evaluate signal and optionally emit recommended control event
+- `guardrail-aggregate` to aggregate multiple evaluations and optionally emit recommended control event
+- `monitor-ingest` to normalize monitor payload into canonical signal artifact
 - `transition` to apply state transitions with prerequisite validation
 
 Active rollback breach definition:

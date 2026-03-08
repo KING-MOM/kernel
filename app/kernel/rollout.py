@@ -209,6 +209,127 @@ def recommended_control_event_from_guardrail(
     return None
 
 
+def aggregate_guardrail_evaluations(
+    evaluations: List[Dict[str, Any]],
+    *,
+    experiment_id: Optional[str] = None,
+    package_hash: Optional[str] = None,
+    pause_escalation_threshold: int = 3,
+) -> Dict[str, Any]:
+    filtered: List[Dict[str, Any]] = []
+    for ev in evaluations:
+        signal = ev.get("signal", {})
+        if experiment_id and signal.get("experiment_id") != experiment_id:
+            continue
+        if package_hash and signal.get("package_hash") != package_hash:
+            continue
+        filtered.append(ev)
+
+    if not filtered:
+        return {
+            "rollout_schema_version": ROLLOUT_SCHEMA_VERSION,
+            "decision": "NONE",
+            "severity": "none",
+            "reasons": ["no_evaluations_in_scope"],
+            "counts": {"rollback_candidate": 0, "pause": 0, "none": 0},
+            "breadth": {"unique_metric_windows": 0},
+        }
+
+    unresolved = [ev for ev in filtered if not bool(ev.get("resolved", False))]
+    rollback_candidates = [ev for ev in unresolved if str(ev.get("decision", "")).upper() == "ROLLBACK_CANDIDATE"]
+    pauses = [ev for ev in unresolved if str(ev.get("decision", "")).upper() == "PAUSE"]
+    nones = [ev for ev in unresolved if str(ev.get("decision", "")).upper() == "NONE"]
+
+    unique_metric_windows = {
+        f"{ev.get('signal', {}).get('metric_name')}|{ev.get('signal', {}).get('metric_window')}" for ev in unresolved
+    }
+    latest_eval = max(unresolved, key=lambda x: str(x.get("evaluated_at_utc", "")))
+
+    reasons: List[str] = []
+    decision = "NONE"
+    severity = "none"
+
+    if rollback_candidates:
+        decision = "ROLLBACK_CANDIDATE"
+        severity = "hard"
+        reasons.append("rollback_candidate_present")
+    elif len(pauses) >= pause_escalation_threshold:
+        # Escalation rule: repeated medium breaches aggregate into rollback candidate.
+        decision = "ROLLBACK_CANDIDATE"
+        severity = "hard"
+        reasons.append("pause_escalated_to_rollback_candidate")
+        reasons.append(f"pause_count:{len(pauses)}")
+    elif pauses:
+        decision = "PAUSE"
+        severity = "soft"
+        reasons.append("pause_present")
+    else:
+        reasons.append("no_actionable_breach")
+
+    reasons.append(f"latest_eval_ts:{latest_eval.get('evaluated_at_utc')}")
+    reasons.append(f"breadth_metric_windows:{len(unique_metric_windows)}")
+    return {
+        "rollout_schema_version": ROLLOUT_SCHEMA_VERSION,
+        "decision": decision,
+        "severity": severity,
+        "reasons": reasons,
+        "counts": {
+            "rollback_candidate": len(rollback_candidates),
+            "pause": len(pauses),
+            "none": len(nones),
+        },
+        "breadth": {"unique_metric_windows": len(unique_metric_windows)},
+        "latest_evaluation": latest_eval,
+    }
+
+
+def recommended_control_event_from_aggregate(
+    *,
+    aggregate_result: Dict[str, Any],
+    actor_id: str = "guardrail-aggregator",
+) -> Optional[Dict[str, Any]]:
+    decision = str(aggregate_result.get("decision", "")).upper().strip()
+    latest = aggregate_result.get("latest_evaluation", {})
+    signal = latest.get("signal", {})
+    reasons = aggregate_result.get("reasons", [])
+    if decision == "PAUSE":
+        return build_pause_event(actor_id=actor_id, reason=f"aggregate pause: {','.join(reasons)}")
+    if decision == "ROLLBACK_CANDIDATE":
+        return build_rollback_event(
+            trigger_mode="auto",
+            actor_id=actor_id,
+            reason=f"aggregate rollback candidate: {','.join(reasons)}",
+            threshold_source=str(signal.get("source", "aggregate")),
+            metric_name=str(signal.get("metric_name", "aggregate")),
+            observed_value=float(signal.get("observed_value", 0.0)),
+            threshold_value=float(signal.get("threshold_value", 0.0)),
+            breach_window=str(signal.get("metric_window", "aggregate")),
+        )
+    return None
+
+
+def ingest_monitor_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Normalize runtime monitor payload into canonical guardrail signal schema.
+    Expected payload keys:
+      experiment_id, package_hash, metric_name, metric_window, observed_value,
+      threshold_value, threshold_direction, source, ts_utc (optional), source_event_id (optional)
+    """
+    return build_guardrail_signal(
+        experiment_id=str(payload.get("experiment_id", "")),
+        package_hash=str(payload.get("package_hash", "")),
+        metric_name=str(payload.get("metric_name", "")),
+        metric_window=str(payload.get("metric_window", "")),
+        observed_value=float(payload.get("observed_value", 0.0)),
+        threshold_value=float(payload.get("threshold_value", 0.0)),
+        threshold_direction=str(payload.get("threshold_direction", "upper")),
+        source=str(payload.get("source", "runtime-monitor")),
+        ts_utc=payload.get("ts_utc"),
+        source_event_id=payload.get("source_event_id"),
+        idempotency_key=payload.get("idempotency_key"),
+    )
+
+
 def evaluate_promotion_eligibility(
     *,
     manifest: Dict[str, Any],

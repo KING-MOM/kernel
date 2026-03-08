@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from app.kernel.rollout import (
+    aggregate_guardrail_evaluations,
     append_transition_log,
     build_guardrail_signal,
     build_launch_gate,
@@ -13,6 +14,8 @@ from app.kernel.rollout import (
     evaluate_promotion_eligibility,
     evaluate_guardrail_signal,
     has_active_rollback_breach,
+    ingest_monitor_payload,
+    recommended_control_event_from_aggregate,
     recommended_control_event_from_guardrail,
     transition_experiment_state,
 )
@@ -90,6 +93,19 @@ def main() -> int:
     geval.add_argument("--out", required=True)
     geval.add_argument("--actor-id", default="guardrail-monitor")
     geval.add_argument("--control-event-out", help="Optional output path for recommended control event JSON")
+
+    gagg = sub.add_parser("guardrail-aggregate", help="Aggregate multiple guardrail evaluations")
+    gagg.add_argument("--evaluations-json", required=True, help="Path to JSON list of guardrail evaluations")
+    gagg.add_argument("--experiment-id")
+    gagg.add_argument("--package-hash")
+    gagg.add_argument("--pause-escalation-threshold", type=int, default=3)
+    gagg.add_argument("--out", required=True)
+    gagg.add_argument("--actor-id", default="guardrail-aggregator")
+    gagg.add_argument("--control-event-out")
+
+    ming = sub.add_parser("monitor-ingest", help="Normalize monitor payload into guardrail signal artifact")
+    ming.add_argument("--payload-json", required=True)
+    ming.add_argument("--out", required=True)
 
     args = parser.parse_args()
 
@@ -169,6 +185,43 @@ def main() -> int:
                 sort_keys=True,
             )
         )
+        return 0
+
+    if args.cmd == "guardrail-aggregate":
+        evaluations = _load(args.evaluations_json)
+        if not isinstance(evaluations, list):
+            raise ValueError("evaluations_json must be a JSON list")
+        aggregate = aggregate_guardrail_evaluations(
+            evaluations,
+            experiment_id=args.experiment_id,
+            package_hash=args.package_hash,
+            pause_escalation_threshold=args.pause_escalation_threshold,
+        )
+        _dump(aggregate, args.out)
+        control_event = recommended_control_event_from_aggregate(
+            aggregate_result=aggregate,
+            actor_id=args.actor_id,
+        )
+        if args.control_event_out and control_event is not None:
+            _dump(control_event, args.control_event_out)
+        print(
+            json.dumps(
+                {
+                    "status": "ok",
+                    "out": args.out,
+                    "decision": aggregate["decision"],
+                    "control_event_emitted": bool(args.control_event_out and control_event is not None),
+                },
+                sort_keys=True,
+            )
+        )
+        return 0
+
+    if args.cmd == "monitor-ingest":
+        payload = _load(args.payload_json)
+        signal = ingest_monitor_payload(payload)
+        _dump(signal, args.out)
+        print(json.dumps({"status": "ok", "out": args.out, "signal_id": signal["signal_id"]}, sort_keys=True))
         return 0
 
     # transition
