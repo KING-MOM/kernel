@@ -14,6 +14,9 @@ class TemporalContext:
     local_hour: int
     is_weekend: bool
     within_business_hours: bool
+    business_start_hour: int
+    business_end_hour: int
+    input_was_naive_utc: bool
 
 
 def _to_local(ts: datetime, timezone: str) -> datetime:
@@ -29,6 +32,7 @@ def build_temporal_context(
     business_start_hour: int = 9,
     business_end_hour: int = 18,
 ) -> TemporalContext:
+    input_was_naive = ts.tzinfo is None
     local = _to_local(ts, timezone)
     is_weekend = local.weekday() >= 5
     within_hours = business_start_hour <= local.hour < business_end_hour
@@ -39,6 +43,9 @@ def build_temporal_context(
         local_hour=local.hour,
         is_weekend=is_weekend,
         within_business_hours=within_hours and not is_weekend,
+        business_start_hour=business_start_hour,
+        business_end_hour=business_end_hour,
+        input_was_naive_utc=input_was_naive,
     )
 
 

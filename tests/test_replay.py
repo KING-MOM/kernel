@@ -60,6 +60,9 @@ def test_replay_timeline_deterministic_decisions_and_hashes():
     assert set(run1[0].attribution.keys()) == {"24h", "72h", "7d"}
     assert run1[0].temporal_context["timezone"] == "UTC"
     assert "within_business_hours" in run1[0].temporal_context
+    assert "input_was_naive_utc" in run1[0].temporal_context
+    assert "reply" in run1[0].attribution["24h"]
+    assert "response_latency_hours" in run1[0].attribution["72h"]
 
     # Deterministic replay should generate identical hashes and actions
     assert [r.state_hash for r in run1] == [r.state_hash for r in run2]
