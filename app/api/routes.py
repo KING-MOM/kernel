@@ -7,7 +7,14 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc, asc
 
 from app.models.core import Person, Relationship, Event, Inbox, Outbox
-from app.models.physics import decay_tension, react_to_event, decide_action_with_context, compute_engagement_score
+from app.models.physics import (
+    compute_engagement_score,
+    compute_next_decision_at,
+    decay_tension,
+    decide_action_with_context,
+    react_to_event,
+)
+from app.kernel.identities import person_id_aliases
 from app.models.lifecycle import transition_stage, apply_transition
 from app.models.temporal import get_golden_hours
 from app.models.feedback import record_outcome, compute_churn_risk
@@ -39,7 +46,7 @@ router = APIRouter(dependencies=[Depends(verify_api_key)])
 def get_or_create_person(db: Session, agent_id: str, external_id: str, email: Optional[str], name: Optional[str], timezone: Optional[str]) -> Person:
     person = (
         db.query(Person)
-        .filter(Person.agent_id == agent_id, Person.external_id == external_id)
+        .filter(Person.agent_id == agent_id, Person.external_id.in_(person_id_aliases(external_id)))
         .first()
     )
     if not person:
@@ -133,6 +140,8 @@ def record_inbound(event: InboundEvent, db: Session = Depends(get_db)):
     db.flush()
 
     react_to_event(rel, "message_received", now)
+    # Make inbound debt immediately sweep-visible even if no explicit /decide call follows.
+    rel.next_decision_at = now
     _update_relationship_metrics(db, rel, now)
 
     inbox_item = Inbox(
@@ -172,6 +181,7 @@ def record_outbound(event: OutboundEvent, db: Session = Depends(get_db)):
     db.flush()
 
     react_to_event(rel, "message_sent", now)
+    rel.next_decision_at = compute_next_decision_at(rel, now, event.action)
     _update_relationship_metrics(db, rel, now)
 
     # Create outbox record for outcome tracking

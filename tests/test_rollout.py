@@ -215,7 +215,12 @@ def test_aggregate_guardrail_evaluations_precedence_and_escalation():
         "evaluated_at_utc": "2026-03-08T12:02:00+00:00",
         "signal": {"metric_name": "latency", "metric_window": "24h", "package_hash": "p1", "experiment_id": "exp1", "source": "m", "observed_value": 5.0, "threshold_value": 3.0},
     }
-    agg = aggregate_guardrail_evaluations([ev_hard, ev_pause], experiment_id="exp1", package_hash="p1")
+    agg = aggregate_guardrail_evaluations(
+        [ev_hard, ev_pause],
+        experiment_id="exp1",
+        package_hash="p1",
+        stale_after_hours=1_000_000,
+    )
     assert agg["decision"] == "ROLLBACK_CANDIDATE"
     assert agg["severity"] == "hard"
 

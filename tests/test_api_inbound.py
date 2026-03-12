@@ -1,3 +1,8 @@
+from sqlalchemy.orm import sessionmaker
+
+from app.models.core import Person, Relationship
+
+
 def test_inbound_creates_person_and_relationship(client):
     resp = client.post(
         "/v1/relationships/events/inbound",
@@ -85,6 +90,99 @@ def test_outbound_creates_and_tracks(client):
     data = resp.json()
     assert data["status"] == "ok"
     assert data["intent_debt"] == 0
+
+
+def test_inbound_sets_next_decision_immediately(client, db_engine):
+    client.post(
+        "/v1/relationships/events/inbound",
+        json={
+            "agent_id": "test-agent",
+            "person_id": "person-next",
+            "message_id": "msg-next-1",
+            "ts": "2026-01-05T12:00:00Z",
+        },
+    )
+
+    session = sessionmaker(bind=db_engine)()
+    try:
+        rel = (
+            session.query(Relationship)
+            .join(Person, Relationship.person_id == Person.id)
+            .filter(Person.agent_id == "test-agent", Person.external_id == "person-next")
+            .first()
+        )
+        assert rel is not None
+        assert rel.next_decision_at is not None
+    finally:
+        session.close()
+
+
+def test_outbound_sets_next_decision_from_action(client, db_engine):
+    client.post(
+        "/v1/relationships/events/inbound",
+        json={
+            "agent_id": "test-agent",
+            "person_id": "person-out-next",
+            "message_id": "msg-out-next-1",
+            "ts": "2026-01-05T12:00:00Z",
+        },
+    )
+    client.post(
+        "/v1/relationships/events/outbound",
+        json={
+            "agent_id": "test-agent",
+            "person_id": "person-out-next",
+            "message_id": "msg-out-next-2",
+            "action": "SEND_FULFILLMENT",
+            "reason": "Paying debt",
+            "ts": "2026-01-05T13:00:00Z",
+        },
+    )
+
+    session = sessionmaker(bind=db_engine)()
+    try:
+        rel = (
+            session.query(Relationship)
+            .join(Person, Relationship.person_id == Person.id)
+            .filter(Person.agent_id == "test-agent", Person.external_id == "person-out-next")
+            .first()
+        )
+        assert rel is not None
+        assert rel.next_decision_at is not None
+    finally:
+        session.close()
+
+
+def test_mexico_whatsapp_aliases_resolve_to_single_person(client, db_engine):
+    client.post(
+        "/v1/relationships/events/inbound",
+        json={
+            "agent_id": "test-agent",
+            "person_id": "whatsapp:+5215554540593",
+            "message_id": "msg-mx-1",
+            "ts": "2026-01-05T12:00:00Z",
+        },
+    )
+    client.post(
+        "/v1/relationships/events/outbound",
+        json={
+            "agent_id": "test-agent",
+            "person_id": "whatsapp:+525554540593",
+            "message_id": "msg-mx-2",
+            "action": "SEND_FULFILLMENT",
+            "reason": "Alias test",
+            "ts": "2026-01-05T13:00:00Z",
+        },
+    )
+
+    session = sessionmaker(bind=db_engine)()
+    try:
+        persons = session.query(Person).filter(Person.agent_id == "test-agent").all()
+        relationships = session.query(Relationship).all()
+        assert len(persons) == 1
+        assert len(relationships) == 1
+    finally:
+        session.close()
 
 
 def test_decide_endpoint(client):

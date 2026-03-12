@@ -115,6 +115,15 @@ def _compute_next_decision_at(rel: Relationship, now: datetime, action: ActionTy
     return now + timedelta(days=1)
 
 
+def compute_next_decision_at(rel: Relationship, now: datetime, action_name: str) -> datetime:
+    """Public adapter for routes that only have string action names."""
+    try:
+        action = ActionType(action_name)
+    except ValueError:
+        action = ActionType.no_action
+    return _compute_next_decision_at(rel, now, action)
+
+
 def _fallback_decision(rel: Relationship, now: datetime, reason_codes: Optional[list[str]] = None) -> DecisionResult:
     return DecisionResult(
         action_type=ActionType.no_action,
