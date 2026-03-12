@@ -55,6 +55,14 @@ class OutcomeEvent(BaseModel):
     opened_at: Optional[datetime] = None
     replied_at: Optional[datetime] = None
     reply_sentiment: Optional[float] = None
+    answered: Optional[bool] = None
+    answered_at: Optional[datetime] = None
+    voicemail: Optional[bool] = None
+    appointment_created: Optional[bool] = None
+    callback_requested: Optional[bool] = None
+    follow_up_required: Optional[bool] = None
+    follow_up_reason: Optional[str] = None
+    negative_signal: Optional[bool] = None
 
 
 # Responses

@@ -107,6 +107,7 @@ class Outbox(Base):
     opened_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     replied_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     reply_sentiment: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    outcome_payload: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
 
 class ContactWindow(Base):

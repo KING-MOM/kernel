@@ -132,3 +132,43 @@ def test_outcome_endpoint(client):
     })
     assert resp.status_code == 200
     assert resp.json()["status"] == "ok"
+
+
+def test_voice_outcome_endpoint_accepts_structured_call_fields(client):
+    client.post("/v1/relationships/events/outbound", json={
+        "agent_id": "voice-outcome-agent",
+        "person_id": "call:+15551234567",
+        "message_id": "voice-out-msg-1",
+        "action": "SEND_NUDGE",
+        "reason": "Placed outbound call",
+        "channel": "voice_call",
+        "ts": "2026-01-05T13:00:00Z",
+    })
+    out_resp = client.get("/v1/relationships", params={"agent_id": "voice-outcome-agent"})
+    assert out_resp.status_code == 200
+
+    rels = out_resp.json()
+    assert len(rels) == 1
+
+    # Read the outbox id through the events/outcome path from a second outbound response.
+    second = client.post("/v1/relationships/events/outbound", json={
+        "agent_id": "voice-outcome-agent",
+        "person_id": "call:+15551234567",
+        "message_id": "voice-out-msg-2",
+        "action": "SEND_NUDGE",
+        "reason": "Placed outbound call",
+        "channel": "voice_call",
+        "ts": "2026-01-05T13:05:00Z",
+    })
+    outbox_id = second.json()["outbox_id"]
+
+    resp = client.post("/v1/relationships/events/outcome", json={
+        "outbox_id": outbox_id,
+        "answered": True,
+        "answered_at": "2026-01-05T13:06:00Z",
+        "follow_up_required": True,
+        "follow_up_reason": "Needs callback later",
+        "callback_requested": True,
+    })
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "ok"

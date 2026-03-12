@@ -133,3 +133,44 @@ def test_churn_risk_none_replied(db_session):
 
     risk = compute_churn_risk(db_session, rel)
     assert risk == 1.0
+
+
+def test_record_voice_outcome_follow_up_sets_debt_and_payload(db_session):
+    rel, outbox = _make_rel_and_outbox(db_session)
+
+    record_outcome(
+        db_session,
+        outbox.id,
+        {
+            "answered": True,
+            "answered_at": outbox.sent_at + timedelta(minutes=2),
+            "follow_up_required": True,
+            "follow_up_reason": "Call back later",
+            "callback_requested": True,
+        },
+    )
+    db_session.flush()
+
+    assert rel.intent_debt == 1
+    assert rel.next_decision_at is not None
+    assert outbox.outcome_payload["answered"] is True
+    assert outbox.outcome_payload["follow_up_reason"] == "Call back later"
+
+
+def test_record_voice_outcome_negative_signal_raises_tension(db_session):
+    rel, outbox = _make_rel_and_outbox(db_session)
+    initial_tension = rel.interaction_tension
+    initial_engagement = rel.engagement_score
+
+    record_outcome(
+        db_session,
+        outbox.id,
+        {
+            "negative_signal": True,
+            "voicemail": False,
+        },
+    )
+    db_session.flush()
+
+    assert rel.interaction_tension > initial_tension
+    assert rel.engagement_score < initial_engagement

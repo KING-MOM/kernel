@@ -134,6 +134,22 @@ def cmd_outcome(args: argparse.Namespace) -> None:
         payload["replied_at"] = args.replied_at
     if args.reply_sentiment is not None:
         payload["reply_sentiment"] = args.reply_sentiment
+    if args.answered is not None:
+        payload["answered"] = args.answered
+    if args.answered_at:
+        payload["answered_at"] = args.answered_at
+    if args.voicemail is not None:
+        payload["voicemail"] = args.voicemail
+    if args.appointment_created is not None:
+        payload["appointment_created"] = args.appointment_created
+    if args.callback_requested is not None:
+        payload["callback_requested"] = args.callback_requested
+    if args.follow_up_required is not None:
+        payload["follow_up_required"] = args.follow_up_required
+    if args.follow_up_reason:
+        payload["follow_up_reason"] = args.follow_up_reason
+    if args.negative_signal is not None:
+        payload["negative_signal"] = args.negative_signal
     data = request_json("POST", "/v1/relationships/events/outcome", payload)
     print(json.dumps(data))
 
@@ -223,6 +239,14 @@ def build_parser() -> argparse.ArgumentParser:
     outcome.add_argument("--delivered", type=bool)
     outcome.add_argument("--replied-at")
     outcome.add_argument("--reply-sentiment", type=float)
+    outcome.add_argument("--answered", type=bool)
+    outcome.add_argument("--answered-at")
+    outcome.add_argument("--voicemail", type=bool)
+    outcome.add_argument("--appointment-created", type=bool)
+    outcome.add_argument("--callback-requested", type=bool)
+    outcome.add_argument("--follow-up-required", type=bool)
+    outcome.add_argument("--follow-up-reason")
+    outcome.add_argument("--negative-signal", type=bool)
     outcome.set_defaults(func=cmd_outcome)
 
     # stats

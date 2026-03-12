@@ -383,6 +383,22 @@ def record_event_outcome(event: OutcomeEvent, db: Session = Depends(get_db)):
     if event.replied_at:
         outcome_data["replied_at"] = event.replied_at
         outcome_data["reply_sentiment"] = event.reply_sentiment
+    if event.answered is not None:
+        outcome_data["answered"] = event.answered
+    if event.answered_at:
+        outcome_data["answered_at"] = event.answered_at
+    if event.voicemail is not None:
+        outcome_data["voicemail"] = event.voicemail
+    if event.appointment_created is not None:
+        outcome_data["appointment_created"] = event.appointment_created
+    if event.callback_requested is not None:
+        outcome_data["callback_requested"] = event.callback_requested
+    if event.follow_up_required is not None:
+        outcome_data["follow_up_required"] = event.follow_up_required
+    if event.follow_up_reason:
+        outcome_data["follow_up_reason"] = event.follow_up_reason
+    if event.negative_signal is not None:
+        outcome_data["negative_signal"] = event.negative_signal
 
     record_outcome(db, event.outbox_id, outcome_data)
     db.commit()
