@@ -1,11 +1,38 @@
 [
   {
-    "window": "24h",
+    "contact_count": 4,
+    "median_response_latency_hours": null,
+    "negative_signal_rate": 0.0,
+    "outbound_count": 1,
+    "progression_rate": 0.0,
+    "reply_count": 0,
+    "reply_rate": 0.0,
     "scope": "10pct/candidate/global",
-    "reply_rate": null,
-    "progression_rate": null,
-    "negative_signal_rate": null,
-    "unresolved_reply_debt_rate": null,
-    "median_response_latency_hours": null
+    "unresolved_reply_debt_rate": 0.25,
+    "window": "24h"
+  },
+  {
+    "contact_count": 4,
+    "median_response_latency_hours": 0.0181,
+    "negative_signal_rate": 0.0,
+    "outbound_count": 17,
+    "progression_rate": 0.1176,
+    "reply_count": 2,
+    "reply_rate": 0.1176,
+    "scope": "10pct/candidate/global",
+    "unresolved_reply_debt_rate": 0.25,
+    "window": "72h"
+  },
+  {
+    "contact_count": 4,
+    "median_response_latency_hours": 0.024,
+    "negative_signal_rate": 0.0,
+    "outbound_count": 21,
+    "progression_rate": 0.1429,
+    "reply_count": 3,
+    "reply_rate": 0.1429,
+    "scope": "10pct/candidate/global",
+    "unresolved_reply_debt_rate": 0.25,
+    "window": "7d"
   }
 ]

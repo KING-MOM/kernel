@@ -9,7 +9,7 @@
 ## Guardrails
 - Aggregate recommendation: `NONE` (severity `none`)
 - Unresolved breaches: `0` (stale after `72.0h`)
-- Aggregate reasons: no_evaluations_in_scope
+- Aggregate reasons: no_unresolved_non_stale_evaluations, stale_after_hours:72.0
 
 ## Active Signals
 - none
@@ -20,4 +20,6 @@
 ## Core Metrics
 | Window | Scope | Reply Rate | Progression | Negative Signal | Unresolved Debt | Latency (h) |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| 24h | 10pct/candidate/global | None | None | None | None | None |
+| 24h | 10pct/candidate/global | 0.0 | 0.0 | 0.0 | 0.25 | None |
+| 72h | 10pct/candidate/global | 0.1176 | 0.1176 | 0.0 | 0.25 | 0.0181 |
+| 7d | 10pct/candidate/global | 0.1429 | 0.1429 | 0.0 | 0.25 | 0.024 |

@@ -9,8 +9,16 @@
   },
   "decision": "NONE",
   "reasons": [
-    "no_evaluations_in_scope"
+    "no_unresolved_non_stale_evaluations",
+    "stale_after_hours:72.0"
   ],
   "rollout_schema_version": "1.0",
+  "scope": {
+    "cohort": "10pct",
+    "experiment_arm": "candidate",
+    "experiment_id": "2026-03-08-first-prod",
+    "package_hash": "trial-pkg-2026-03-08-a",
+    "segment": "global"
+  },
   "severity": "none"
 }

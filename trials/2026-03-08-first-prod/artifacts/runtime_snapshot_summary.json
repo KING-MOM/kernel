@@ -1,0 +1,87 @@
+{
+  "aggregate_decision": "NONE",
+  "aggregate_severity": "none",
+  "canonical_contact_count": 4,
+  "contacts": [
+    {
+      "aliases": [
+        "whatsapp:+5215520453254"
+      ],
+      "canonical_external_id": "whatsapp:+5215520453254",
+      "intent_debt": 0,
+      "interaction_tension": 0.4,
+      "last_touch_at": "2026-03-10T15:43:30.500000+00:00",
+      "stage": "value_delivered"
+    },
+    {
+      "aliases": [
+        "whatsapp:+5215530063065"
+      ],
+      "canonical_external_id": "whatsapp:+5215530063065",
+      "intent_debt": 1,
+      "interaction_tension": 0.0,
+      "last_touch_at": "2026-03-09T20:51:35.165000+00:00",
+      "stage": "engaged"
+    },
+    {
+      "aliases": [
+        "whatsapp:+5215554540593",
+        "whatsapp:+525554540593"
+      ],
+      "canonical_external_id": "whatsapp:+5215554540593",
+      "intent_debt": 0,
+      "interaction_tension": 0.4,
+      "last_touch_at": "2026-03-11T15:00:04.200000+00:00",
+      "stage": "value_delivered"
+    },
+    {
+      "aliases": [
+        "whatsapp:+5215560663926"
+      ],
+      "canonical_external_id": "whatsapp:+5215560663926",
+      "intent_debt": 0,
+      "interaction_tension": 1.0,
+      "last_touch_at": "2026-03-10T00:02:45.017000+00:00",
+      "stage": "value_delivered"
+    }
+  ],
+  "generated_at_utc": "2026-03-12T14:35:52.968528+00:00",
+  "windows": [
+    {
+      "contact_count": 4,
+      "median_response_latency_hours": null,
+      "negative_signal_rate": 0.0,
+      "outbound_count": 1,
+      "progression_rate": 0.0,
+      "reply_count": 0,
+      "reply_rate": 0.0,
+      "scope": "10pct/candidate/global",
+      "unresolved_reply_debt_rate": 0.25,
+      "window": "24h"
+    },
+    {
+      "contact_count": 4,
+      "median_response_latency_hours": 0.0181,
+      "negative_signal_rate": 0.0,
+      "outbound_count": 17,
+      "progression_rate": 0.1176,
+      "reply_count": 2,
+      "reply_rate": 0.1176,
+      "scope": "10pct/candidate/global",
+      "unresolved_reply_debt_rate": 0.25,
+      "window": "72h"
+    },
+    {
+      "contact_count": 4,
+      "median_response_latency_hours": 0.024,
+      "negative_signal_rate": 0.0,
+      "outbound_count": 21,
+      "progression_rate": 0.1429,
+      "reply_count": 3,
+      "reply_rate": 0.1429,
+      "scope": "10pct/candidate/global",
+      "unresolved_reply_debt_rate": 0.25,
+      "window": "7d"
+    }
+  ]
+}

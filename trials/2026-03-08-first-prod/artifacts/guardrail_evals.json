@@ -1,1 +1,387 @@
-[]
+[
+  {
+    "breach": {
+      "active": false,
+      "observed_value": 0.0,
+      "threshold_direction": "upper",
+      "threshold_value": 0.1
+    },
+    "decision": "NONE",
+    "evaluated_at_utc": "2026-03-12T14:35:52.968528+00:00",
+    "reasons": [
+      "threshold_not_breached"
+    ],
+    "resolved": false,
+    "rollout_schema_version": "1.0",
+    "severity": "none",
+    "signal": {
+      "cohort": "10pct",
+      "experiment_arm": "candidate",
+      "experiment_id": "2026-03-08-first-prod",
+      "idempotency_key": "2026-03-08-first-prod-24h-negative_signal_rate-20260312T143552Z",
+      "metric_name": "negative_signal_rate",
+      "metric_window": "24h",
+      "observed_value": 0.0,
+      "package_hash": "trial-pkg-2026-03-08-a",
+      "rollout_schema_version": "1.0",
+      "segment": "global",
+      "signal_id": "2026-03-08-first-prod-24h-negative_signal_rate",
+      "source": "live-runtime-snapshot",
+      "source_event_id": "2026-03-08-first-prod-24h-negative_signal_rate-20260312T143552Z",
+      "threshold_direction": "upper",
+      "threshold_value": 0.1,
+      "ts_utc": "2026-03-12T14:35:52.968528+00:00"
+    },
+    "valid_signal": true
+  },
+  {
+    "breach": {
+      "active": false,
+      "observed_value": 0.0,
+      "threshold_direction": "upper",
+      "threshold_value": 0.0
+    },
+    "decision": "NONE",
+    "evaluated_at_utc": "2026-03-12T14:35:52.968528+00:00",
+    "reasons": [
+      "threshold_not_breached"
+    ],
+    "resolved": false,
+    "rollout_schema_version": "1.0",
+    "severity": "none",
+    "signal": {
+      "cohort": "10pct",
+      "experiment_arm": "candidate",
+      "experiment_id": "2026-03-08-first-prod",
+      "idempotency_key": "2026-03-08-first-prod-24h-compliance_incidents-20260312T143552Z",
+      "metric_name": "compliance_incidents",
+      "metric_window": "24h",
+      "observed_value": 0.0,
+      "package_hash": "trial-pkg-2026-03-08-a",
+      "rollout_schema_version": "1.0",
+      "segment": "global",
+      "signal_id": "2026-03-08-first-prod-24h-compliance_incidents",
+      "source": "live-runtime-snapshot",
+      "source_event_id": "2026-03-08-first-prod-24h-compliance_incidents-20260312T143552Z",
+      "threshold_direction": "upper",
+      "threshold_value": 0.0,
+      "ts_utc": "2026-03-12T14:35:52.968528+00:00"
+    },
+    "valid_signal": true
+  },
+  {
+    "breach": {
+      "active": false,
+      "observed_value": 0.25,
+      "threshold_direction": "upper",
+      "threshold_value": 0.35
+    },
+    "decision": "NONE",
+    "evaluated_at_utc": "2026-03-12T14:35:52.968528+00:00",
+    "reasons": [
+      "threshold_not_breached"
+    ],
+    "resolved": false,
+    "rollout_schema_version": "1.0",
+    "severity": "none",
+    "signal": {
+      "cohort": "10pct",
+      "experiment_arm": "candidate",
+      "experiment_id": "2026-03-08-first-prod",
+      "idempotency_key": "2026-03-08-first-prod-24h-unresolved_reply_debt_rate-20260312T143552Z",
+      "metric_name": "unresolved_reply_debt_rate",
+      "metric_window": "24h",
+      "observed_value": 0.25,
+      "package_hash": "trial-pkg-2026-03-08-a",
+      "rollout_schema_version": "1.0",
+      "segment": "global",
+      "signal_id": "2026-03-08-first-prod-24h-unresolved_reply_debt_rate",
+      "source": "live-runtime-snapshot",
+      "source_event_id": "2026-03-08-first-prod-24h-unresolved_reply_debt_rate-20260312T143552Z",
+      "threshold_direction": "upper",
+      "threshold_value": 0.35,
+      "ts_utc": "2026-03-12T14:35:52.968528+00:00"
+    },
+    "valid_signal": true
+  },
+  {
+    "breach": {
+      "active": false,
+      "observed_value": 0.0,
+      "threshold_direction": "upper",
+      "threshold_value": 0.1
+    },
+    "decision": "NONE",
+    "evaluated_at_utc": "2026-03-12T14:35:52.968528+00:00",
+    "reasons": [
+      "threshold_not_breached"
+    ],
+    "resolved": false,
+    "rollout_schema_version": "1.0",
+    "severity": "none",
+    "signal": {
+      "cohort": "10pct",
+      "experiment_arm": "candidate",
+      "experiment_id": "2026-03-08-first-prod",
+      "idempotency_key": "2026-03-08-first-prod-72h-negative_signal_rate-20260312T143552Z",
+      "metric_name": "negative_signal_rate",
+      "metric_window": "72h",
+      "observed_value": 0.0,
+      "package_hash": "trial-pkg-2026-03-08-a",
+      "rollout_schema_version": "1.0",
+      "segment": "global",
+      "signal_id": "2026-03-08-first-prod-72h-negative_signal_rate",
+      "source": "live-runtime-snapshot",
+      "source_event_id": "2026-03-08-first-prod-72h-negative_signal_rate-20260312T143552Z",
+      "threshold_direction": "upper",
+      "threshold_value": 0.1,
+      "ts_utc": "2026-03-12T14:35:52.968528+00:00"
+    },
+    "valid_signal": true
+  },
+  {
+    "breach": {
+      "active": false,
+      "observed_value": 0.0,
+      "threshold_direction": "upper",
+      "threshold_value": 0.0
+    },
+    "decision": "NONE",
+    "evaluated_at_utc": "2026-03-12T14:35:52.968528+00:00",
+    "reasons": [
+      "threshold_not_breached"
+    ],
+    "resolved": false,
+    "rollout_schema_version": "1.0",
+    "severity": "none",
+    "signal": {
+      "cohort": "10pct",
+      "experiment_arm": "candidate",
+      "experiment_id": "2026-03-08-first-prod",
+      "idempotency_key": "2026-03-08-first-prod-72h-compliance_incidents-20260312T143552Z",
+      "metric_name": "compliance_incidents",
+      "metric_window": "72h",
+      "observed_value": 0.0,
+      "package_hash": "trial-pkg-2026-03-08-a",
+      "rollout_schema_version": "1.0",
+      "segment": "global",
+      "signal_id": "2026-03-08-first-prod-72h-compliance_incidents",
+      "source": "live-runtime-snapshot",
+      "source_event_id": "2026-03-08-first-prod-72h-compliance_incidents-20260312T143552Z",
+      "threshold_direction": "upper",
+      "threshold_value": 0.0,
+      "ts_utc": "2026-03-12T14:35:52.968528+00:00"
+    },
+    "valid_signal": true
+  },
+  {
+    "breach": {
+      "active": false,
+      "observed_value": 0.25,
+      "threshold_direction": "upper",
+      "threshold_value": 0.35
+    },
+    "decision": "NONE",
+    "evaluated_at_utc": "2026-03-12T14:35:52.968528+00:00",
+    "reasons": [
+      "threshold_not_breached"
+    ],
+    "resolved": false,
+    "rollout_schema_version": "1.0",
+    "severity": "none",
+    "signal": {
+      "cohort": "10pct",
+      "experiment_arm": "candidate",
+      "experiment_id": "2026-03-08-first-prod",
+      "idempotency_key": "2026-03-08-first-prod-72h-unresolved_reply_debt_rate-20260312T143552Z",
+      "metric_name": "unresolved_reply_debt_rate",
+      "metric_window": "72h",
+      "observed_value": 0.25,
+      "package_hash": "trial-pkg-2026-03-08-a",
+      "rollout_schema_version": "1.0",
+      "segment": "global",
+      "signal_id": "2026-03-08-first-prod-72h-unresolved_reply_debt_rate",
+      "source": "live-runtime-snapshot",
+      "source_event_id": "2026-03-08-first-prod-72h-unresolved_reply_debt_rate-20260312T143552Z",
+      "threshold_direction": "upper",
+      "threshold_value": 0.35,
+      "ts_utc": "2026-03-12T14:35:52.968528+00:00"
+    },
+    "valid_signal": true
+  },
+  {
+    "breach": {
+      "active": false,
+      "observed_value": 0.018135555555555558,
+      "threshold_direction": "upper",
+      "threshold_value": 24.0
+    },
+    "decision": "NONE",
+    "evaluated_at_utc": "2026-03-12T14:35:52.968528+00:00",
+    "reasons": [
+      "threshold_not_breached"
+    ],
+    "resolved": false,
+    "rollout_schema_version": "1.0",
+    "severity": "none",
+    "signal": {
+      "cohort": "10pct",
+      "experiment_arm": "candidate",
+      "experiment_id": "2026-03-08-first-prod",
+      "idempotency_key": "2026-03-08-first-prod-72h-median_response_latency_hours-20260312T143552Z",
+      "metric_name": "median_response_latency_hours",
+      "metric_window": "72h",
+      "observed_value": 0.018135555555555558,
+      "package_hash": "trial-pkg-2026-03-08-a",
+      "rollout_schema_version": "1.0",
+      "segment": "global",
+      "signal_id": "2026-03-08-first-prod-72h-median_response_latency_hours",
+      "source": "live-runtime-snapshot",
+      "source_event_id": "2026-03-08-first-prod-72h-median_response_latency_hours-20260312T143552Z",
+      "threshold_direction": "upper",
+      "threshold_value": 24.0,
+      "ts_utc": "2026-03-12T14:35:52.968528+00:00"
+    },
+    "valid_signal": true
+  },
+  {
+    "breach": {
+      "active": false,
+      "observed_value": 0.0,
+      "threshold_direction": "upper",
+      "threshold_value": 0.1
+    },
+    "decision": "NONE",
+    "evaluated_at_utc": "2026-03-12T14:35:52.968528+00:00",
+    "reasons": [
+      "threshold_not_breached"
+    ],
+    "resolved": false,
+    "rollout_schema_version": "1.0",
+    "severity": "none",
+    "signal": {
+      "cohort": "10pct",
+      "experiment_arm": "candidate",
+      "experiment_id": "2026-03-08-first-prod",
+      "idempotency_key": "2026-03-08-first-prod-7d-negative_signal_rate-20260312T143552Z",
+      "metric_name": "negative_signal_rate",
+      "metric_window": "7d",
+      "observed_value": 0.0,
+      "package_hash": "trial-pkg-2026-03-08-a",
+      "rollout_schema_version": "1.0",
+      "segment": "global",
+      "signal_id": "2026-03-08-first-prod-7d-negative_signal_rate",
+      "source": "live-runtime-snapshot",
+      "source_event_id": "2026-03-08-first-prod-7d-negative_signal_rate-20260312T143552Z",
+      "threshold_direction": "upper",
+      "threshold_value": 0.1,
+      "ts_utc": "2026-03-12T14:35:52.968528+00:00"
+    },
+    "valid_signal": true
+  },
+  {
+    "breach": {
+      "active": false,
+      "observed_value": 0.0,
+      "threshold_direction": "upper",
+      "threshold_value": 0.0
+    },
+    "decision": "NONE",
+    "evaluated_at_utc": "2026-03-12T14:35:52.968528+00:00",
+    "reasons": [
+      "threshold_not_breached"
+    ],
+    "resolved": false,
+    "rollout_schema_version": "1.0",
+    "severity": "none",
+    "signal": {
+      "cohort": "10pct",
+      "experiment_arm": "candidate",
+      "experiment_id": "2026-03-08-first-prod",
+      "idempotency_key": "2026-03-08-first-prod-7d-compliance_incidents-20260312T143552Z",
+      "metric_name": "compliance_incidents",
+      "metric_window": "7d",
+      "observed_value": 0.0,
+      "package_hash": "trial-pkg-2026-03-08-a",
+      "rollout_schema_version": "1.0",
+      "segment": "global",
+      "signal_id": "2026-03-08-first-prod-7d-compliance_incidents",
+      "source": "live-runtime-snapshot",
+      "source_event_id": "2026-03-08-first-prod-7d-compliance_incidents-20260312T143552Z",
+      "threshold_direction": "upper",
+      "threshold_value": 0.0,
+      "ts_utc": "2026-03-12T14:35:52.968528+00:00"
+    },
+    "valid_signal": true
+  },
+  {
+    "breach": {
+      "active": false,
+      "observed_value": 0.25,
+      "threshold_direction": "upper",
+      "threshold_value": 0.35
+    },
+    "decision": "NONE",
+    "evaluated_at_utc": "2026-03-12T14:35:52.968528+00:00",
+    "reasons": [
+      "threshold_not_breached"
+    ],
+    "resolved": false,
+    "rollout_schema_version": "1.0",
+    "severity": "none",
+    "signal": {
+      "cohort": "10pct",
+      "experiment_arm": "candidate",
+      "experiment_id": "2026-03-08-first-prod",
+      "idempotency_key": "2026-03-08-first-prod-7d-unresolved_reply_debt_rate-20260312T143552Z",
+      "metric_name": "unresolved_reply_debt_rate",
+      "metric_window": "7d",
+      "observed_value": 0.25,
+      "package_hash": "trial-pkg-2026-03-08-a",
+      "rollout_schema_version": "1.0",
+      "segment": "global",
+      "signal_id": "2026-03-08-first-prod-7d-unresolved_reply_debt_rate",
+      "source": "live-runtime-snapshot",
+      "source_event_id": "2026-03-08-first-prod-7d-unresolved_reply_debt_rate-20260312T143552Z",
+      "threshold_direction": "upper",
+      "threshold_value": 0.35,
+      "ts_utc": "2026-03-12T14:35:52.968528+00:00"
+    },
+    "valid_signal": true
+  },
+  {
+    "breach": {
+      "active": false,
+      "observed_value": 0.023963055555555553,
+      "threshold_direction": "upper",
+      "threshold_value": 24.0
+    },
+    "decision": "NONE",
+    "evaluated_at_utc": "2026-03-12T14:35:52.968528+00:00",
+    "reasons": [
+      "threshold_not_breached"
+    ],
+    "resolved": false,
+    "rollout_schema_version": "1.0",
+    "severity": "none",
+    "signal": {
+      "cohort": "10pct",
+      "experiment_arm": "candidate",
+      "experiment_id": "2026-03-08-first-prod",
+      "idempotency_key": "2026-03-08-first-prod-7d-median_response_latency_hours-20260312T143552Z",
+      "metric_name": "median_response_latency_hours",
+      "metric_window": "7d",
+      "observed_value": 0.023963055555555553,
+      "package_hash": "trial-pkg-2026-03-08-a",
+      "rollout_schema_version": "1.0",
+      "segment": "global",
+      "signal_id": "2026-03-08-first-prod-7d-median_response_latency_hours",
+      "source": "live-runtime-snapshot",
+      "source_event_id": "2026-03-08-first-prod-7d-median_response_latency_hours-20260312T143552Z",
+      "threshold_direction": "upper",
+      "threshold_value": 24.0,
+      "ts_utc": "2026-03-12T14:35:52.968528+00:00"
+    },
+    "valid_signal": true
+  }
+]
