@@ -18,6 +18,13 @@ docker-compose up --build
 
 Kernel available at `http://localhost:8088`.
 
+Supported transport channels in the current API:
+- `email`
+- `sms`
+- `whatsapp`
+- `voice_call`
+- `telegram`
+
 Check health:
 
 ```bash
@@ -103,6 +110,17 @@ python scripts/openclaw_kernel_tool.py stats --agent-id openclaw-main
 python scripts/openclaw_kernel_tool.py manifest  # Print OpenClaw skill manifest
 ```
 
+Inbound/outbound events can carry an explicit channel. Example voice call logging:
+
+```bash
+python scripts/openclaw_kernel_tool.py inbound \
+  --agent-id openclaw-main \
+  --person-id call:+15551234567 \
+  --message-id call-001 \
+  --channel voice_call \
+  --ts 2026-03-07T19:00:00Z
+```
+
 ## First End-to-End Sweep Test
 
 Start from a clean local DB and run one inbound + sweep cycle:
@@ -161,5 +179,5 @@ Project-wide persistent parameter ops (outside this repo):
 ## Tests
 
 ```bash
-python -m pytest -v  # currently 111 tests
+python -m pytest -v
 ```

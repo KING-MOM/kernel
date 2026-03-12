@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc, asc
 
 from app.models.core import Person, Relationship, Event, Inbox, Outbox
+from app.kernel.contracts import Channel
 from app.models.physics import (
     compute_engagement_score,
     compute_next_decision_at,
@@ -67,6 +68,12 @@ def get_or_create_person(db: Session, agent_id: str, external_id: str, email: Op
         if updated:
             db.add(person)
     return person
+
+
+def _set_preferred_channel(person: Person, channel: Channel) -> None:
+    channel_value = channel.value
+    if not person.preferred_channel:
+        person.preferred_channel = channel_value
 
 
 def get_or_create_relationship(db: Session, person: Person) -> Relationship:
@@ -133,11 +140,12 @@ def record_inbound(event: InboundEvent, db: Session = Depends(get_db)):
     new_event = Event(
         relationship_id=rel.id,
         type="message_received",
-        payload={"subject": event.subject, "snippet": event.snippet},
+        payload={"subject": event.subject, "snippet": event.snippet, "channel": event.channel.value},
         created_at=now,
     )
     db.add(new_event)
     db.flush()
+    _set_preferred_channel(person, event.channel)
 
     react_to_event(rel, "message_received", now)
     # Make inbound debt immediately sweep-visible even if no explicit /decide call follows.
@@ -174,11 +182,17 @@ def record_outbound(event: OutboundEvent, db: Session = Depends(get_db)):
     new_event = Event(
         relationship_id=rel.id,
         type="message_sent",
-        payload={"action": event.action, "reason": event.reason, "parent_message_id": event.parent_message_id},
+        payload={
+            "action": event.action,
+            "reason": event.reason,
+            "parent_message_id": event.parent_message_id,
+            "channel": event.channel.value,
+        },
         created_at=now,
     )
     db.add(new_event)
     db.flush()
+    _set_preferred_channel(person, event.channel)
 
     react_to_event(rel, "message_sent", now)
     rel.next_decision_at = compute_next_decision_at(rel, now, event.action)
@@ -189,6 +203,7 @@ def record_outbound(event: OutboundEvent, db: Session = Depends(get_db)):
         relationship_id=rel.id,
         event_id=new_event.id,
         action=event.action,
+        channel=event.channel.value,
         sent_at=now,
     )
     db.add(outbox)

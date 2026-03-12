@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
+from app.kernel.contracts import Channel
 
 
 class InboundEvent(BaseModel):
@@ -12,6 +13,7 @@ class InboundEvent(BaseModel):
     message_id: str = Field(..., min_length=1)
     subject: Optional[str] = None
     snippet: Optional[str] = None
+    channel: Channel = Channel.email
     ts: datetime
 
 
@@ -25,6 +27,7 @@ class OutboundEvent(BaseModel):
     action: str = Field(..., min_length=1)
     reason: str = Field(..., min_length=1)
     parent_message_id: Optional[str] = None
+    channel: Channel = Channel.email
     ts: datetime
 
 

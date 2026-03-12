@@ -11,6 +11,7 @@ class Channel(str, Enum):
     email = "email"
     sms = "sms"
     whatsapp = "whatsapp"
+    voice_call = "voice_call"
     telegram = "telegram"
     other = "other"
 

@@ -1,6 +1,6 @@
 from sqlalchemy.orm import sessionmaker
 
-from app.models.core import Person, Relationship
+from app.models.core import Event, Outbox, Person, Relationship
 
 
 def test_inbound_creates_person_and_relationship(client):
@@ -237,3 +237,54 @@ def test_health_check(client):
     assert resp.status_code == 200
     assert resp.json()["status"] == "ok"
     assert "version" in resp.json()
+
+
+def test_voice_call_channel_is_persisted_end_to_end(client, db_engine):
+    client.post(
+        "/v1/relationships/events/inbound",
+        json={
+            "agent_id": "test-agent",
+            "person_id": "call:+15551234567",
+            "message_id": "msg-call-1",
+            "channel": "voice_call",
+            "snippet": "Missed your call",
+            "ts": "2026-01-05T12:00:00Z",
+        },
+    )
+    client.post(
+        "/v1/relationships/events/outbound",
+        json={
+            "agent_id": "test-agent",
+            "person_id": "call:+15551234567",
+            "message_id": "msg-call-2",
+            "action": "SEND_FULFILLMENT",
+            "reason": "Call back",
+            "channel": "voice_call",
+            "ts": "2026-01-05T12:05:00Z",
+        },
+    )
+
+    session = sessionmaker(bind=db_engine)()
+    try:
+        person = (
+            session.query(Person)
+            .filter(Person.agent_id == "test-agent", Person.external_id == "call:+15551234567")
+            .first()
+        )
+        rel = session.query(Relationship).filter(Relationship.person_id == person.id).first()
+        inbound_event = (
+            session.query(Event)
+            .filter(Event.relationship_id == rel.id, Event.type == "message_received")
+            .order_by(Event.created_at.asc())
+            .first()
+        )
+        outbound = session.query(Outbox).filter(Outbox.relationship_id == rel.id).first()
+
+        assert person is not None
+        assert person.preferred_channel == "voice_call"
+        assert inbound_event is not None
+        assert inbound_event.payload["channel"] == "voice_call"
+        assert outbound is not None
+        assert outbound.channel == "voice_call"
+    finally:
+        session.close()

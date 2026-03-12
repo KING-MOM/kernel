@@ -71,6 +71,7 @@ def cmd_inbound(args: argparse.Namespace) -> None:
         "message_id": args.message_id,
         "subject": args.subject,
         "snippet": args.snippet,
+        "channel": args.channel,
         "ts": args.ts,
     }
     data = request_json("POST", "/v1/relationships/events/inbound", payload)
@@ -88,6 +89,7 @@ def cmd_outbound(args: argparse.Namespace) -> None:
         "action": args.action,
         "reason": args.reason,
         "parent_message_id": args.parent_message_id,
+        "channel": args.channel,
         "ts": args.ts,
     }
     data = request_json("POST", "/v1/relationships/events/outbound", payload)
@@ -176,6 +178,7 @@ def build_parser() -> argparse.ArgumentParser:
     inbound.add_argument("--timezone")
     inbound.add_argument("--subject")
     inbound.add_argument("--snippet")
+    inbound.add_argument("--channel", default="email")
     inbound.set_defaults(func=cmd_inbound)
 
     # outbound
@@ -190,6 +193,7 @@ def build_parser() -> argparse.ArgumentParser:
     outbound.add_argument("--name")
     outbound.add_argument("--timezone")
     outbound.add_argument("--parent-message-id")
+    outbound.add_argument("--channel", default="email")
     outbound.set_defaults(func=cmd_outbound)
 
     # decide
