@@ -15,7 +15,7 @@ from app.models.physics import (
     decide_action_with_context,
     react_to_event,
 )
-from app.kernel.identities import person_id_aliases
+from app.kernel.identities import person_id_aliases, canonical_person_external_id
 from app.models.lifecycle import transition_stage, apply_transition
 from app.models.temporal import get_golden_hours
 from app.models.feedback import record_outcome, compute_churn_risk
@@ -44,18 +44,39 @@ logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(verify_api_key)])
 
 
+def _preferred_person_match(persons: List[Person], canonical_external_id: str) -> Optional[Person]:
+    if not persons:
+        return None
+    exact = [person for person in persons if person.external_id == canonical_external_id]
+    pool = exact or persons
+    # Deterministic ordering matters once legacy rows already exist.
+    return sorted(
+        pool,
+        key=lambda person: (
+            person.created_at is None,
+            person.created_at,
+            person.id,
+        ),
+    )[0]
+
+
 def get_or_create_person(db: Session, agent_id: str, external_id: str, email: Optional[str], name: Optional[str], timezone: Optional[str]) -> Person:
-    person = (
+    canonical_external_id = canonical_person_external_id(external_id)
+    matches = (
         db.query(Person)
         .filter(Person.agent_id == agent_id, Person.external_id.in_(person_id_aliases(external_id)))
-        .first()
+        .all()
     )
+    person = _preferred_person_match(matches, canonical_external_id)
     if not person:
-        person = Person(agent_id=agent_id, external_id=external_id, email=email, name=name, timezone=timezone or "UTC")
+        person = Person(agent_id=agent_id, external_id=canonical_external_id, email=email, name=name, timezone=timezone or "UTC")
         db.add(person)
         db.flush()
     else:
         updated = False
+        if canonical_external_id and person.external_id != canonical_external_id:
+            person.external_id = canonical_external_id
+            updated = True
         if email and not person.email:
             person.email = email
             updated = True
@@ -121,7 +142,7 @@ def record_inbound(event: InboundEvent, db: Session = Depends(get_db)):
         rel = (
             db.query(Relationship)
             .join(Person, Relationship.person_id == Person.id)
-            .filter(Person.agent_id == event.agent_id, Person.external_id == event.person_id)
+            .filter(Person.agent_id == event.agent_id, Person.external_id.in_(person_id_aliases(event.person_id)))
             .first()
         )
         if not rel:

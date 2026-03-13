@@ -181,6 +181,92 @@ def test_mexico_whatsapp_aliases_resolve_to_single_person(client, db_engine):
         relationships = session.query(Relationship).all()
         assert len(persons) == 1
         assert len(relationships) == 1
+        assert persons[0].external_id == "person:+5215554540593"
+    finally:
+        session.close()
+
+
+def test_whatsapp_and_voice_same_phone_resolve_to_single_person(client, db_engine):
+    client.post(
+        "/v1/relationships/events/inbound",
+        json={
+            "agent_id": "test-agent",
+            "person_id": "whatsapp:+525554540593",
+            "message_id": "msg-cross-1",
+            "ts": "2026-01-05T12:00:00Z",
+        },
+    )
+    client.post(
+        "/v1/relationships/events/outbound",
+        json={
+            "agent_id": "test-agent",
+            "person_id": "voice:+5215554540593",
+            "message_id": "msg-cross-2",
+            "action": "SEND_NUDGE",
+            "reason": "Cross channel alias test",
+            "channel": "voice_call",
+            "ts": "2026-01-05T13:00:00Z",
+        },
+    )
+
+    session = sessionmaker(bind=db_engine)()
+    try:
+        persons = session.query(Person).filter(Person.agent_id == "test-agent").all()
+        relationships = session.query(Relationship).all()
+        assert len(persons) == 1
+        assert len(relationships) == 1
+        assert persons[0].external_id == "person:+5215554540593"
+    finally:
+        session.close()
+
+
+def test_legacy_and_canonical_duplicates_prefer_canonical_person(client, db_engine):
+    session = sessionmaker(bind=db_engine)()
+    try:
+        legacy = Person(
+            agent_id="test-agent",
+            external_id="whatsapp:+5215554540593",
+            timezone="UTC",
+        )
+        canonical = Person(
+            agent_id="test-agent",
+            external_id="person:+5215554540593",
+            timezone="UTC",
+        )
+        session.add_all([legacy, canonical])
+        session.flush()
+        session.add_all(
+            [
+                Relationship(person_id=legacy.id, active=True, stage="engaged"),
+                Relationship(person_id=canonical.id, active=True, stage="engaged"),
+            ]
+        )
+        session.commit()
+    finally:
+        session.close()
+
+    resp = client.post(
+        "/v1/relationships/events/inbound",
+        json={
+            "agent_id": "test-agent",
+            "person_id": "whatsapp:+525554540593",
+            "message_id": "msg-legacy-canonical-1",
+            "ts": "2026-01-05T12:00:00Z",
+        },
+    )
+    assert resp.status_code == 200
+
+    session = sessionmaker(bind=db_engine)()
+    try:
+        persons = session.query(Person).filter(Person.agent_id == "test-agent").order_by(Person.external_id.asc()).all()
+        rels = session.query(Relationship).join(Person, Relationship.person_id == Person.id).filter(Person.agent_id == "test-agent").all()
+        canonical = next(person for person in persons if person.external_id == "person:+5215554540593")
+        legacy = next(person for person in persons if person.external_id == "whatsapp:+5215554540593")
+        canonical_rel = next(rel for rel in rels if rel.person_id == canonical.id)
+        legacy_rel = next(rel for rel in rels if rel.person_id == legacy.id)
+        assert canonical_rel.intent_debt == 1
+        assert canonical_rel.last_inbound_at is not None
+        assert legacy_rel.last_inbound_at is None
     finally:
         session.close()
 
