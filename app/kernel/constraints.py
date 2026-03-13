@@ -54,6 +54,8 @@ class ConstraintGate:
             if hours_since < self.settings.min_cooldown_hours:
                 reasons.append(ConstraintReason.hard_cooldown_active)
                 allowed = [a for a in allowed if a not in SEND_ACTIONS]
+                if self._debt_override_allows_fulfillment(state):
+                    allowed.append(ActionType.send_fulfillment)
 
         if state.inferred.tension_score > self.settings.max_tension:
             reasons.append(ConstraintReason.hard_tension_block)
@@ -61,3 +63,11 @@ class ConstraintGate:
 
         blocked = [a for a in ALL_ACTIONS if a not in allowed]
         return ConstraintResult(allowed_actions=allowed, blocked_actions=blocked, reasons=reasons)
+
+    def _debt_override_allows_fulfillment(self, state: RelationshipState) -> bool:
+        return (
+            state.inferred.reply_debt > 0
+            and state.inferred.trust_score >= self.settings.debt_override_min_trust
+            and state.inferred.engagement_score >= self.settings.debt_override_min_engagement
+            and state.inferred.tension_score < self.settings.debt_override_max_tension
+        )

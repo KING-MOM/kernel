@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     lambda_decay: float = 0.15
     max_tension: float = 0.85
     min_cooldown_hours: float = 24.0
+    debt_override_min_trust: float = 0.8
+    debt_override_min_engagement: float = 85.0
+    debt_override_max_tension: float = 0.5
     trust_increment_inbound: float = 0.1
     trust_increment_outbound: float = 0.05
     tension_increment_outbound: float = 0.4
