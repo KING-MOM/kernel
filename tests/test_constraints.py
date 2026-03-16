@@ -106,6 +106,30 @@ def test_constraint_gate_keeps_fulfillment_blocked_when_debt_override_thresholds
     assert ActionType.send_fulfillment in result.blocked_actions
 
 
+def test_constraint_gate_blocks_owner_relationships():
+    now = datetime(2026, 3, 8, 12, 0, 0)
+    state = RelationshipState(
+        relationship_id="rel-owner",
+        facts=RelationshipFacts(
+            last_contact_at=now - timedelta(minutes=20),
+            owner_excluded=True,
+        ),
+        inferred=RelationshipInferred(
+            trust_score=1.0,
+            tension_score=0.0,
+            reply_debt=1,
+            engagement_score=99.0,
+            churn_risk=0.0,
+        ),
+    )
+
+    gate = ConstraintGate(Settings())
+    result = gate.evaluate(state, now)
+
+    assert ConstraintReason.owner_excluded in result.reasons
+    assert result.allowed_actions == [ActionType.no_action]
+
+
 def test_policy_never_returns_blocked_send_action():
     now = datetime(2026, 3, 8, 12, 0, 0)
     rel = Relationship(

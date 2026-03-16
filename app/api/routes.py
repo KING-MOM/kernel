@@ -304,7 +304,7 @@ def decide_batch(event: DecideBatchRequest, db: Session = Depends(get_db)):
             parent_message_id = latest_inbound_message_id(db, rel)
 
         decisions.append(Decision(
-            person_id=person_id,
+            person_id=person.external_id,
             action=action,
             reason=reason,
             confidence=confidence,
@@ -360,7 +360,7 @@ def sweep(event: SweepRequest, db: Session = Depends(get_db)):
         rel.next_decision_at = decision.next_decision_at
 
         decisions.append(SweepDecision(
-            person_id=rel.person_id,
+            person_id=rel.person.external_id,
             relationship_id=rel.id,
             action=action,
             reason=reason,

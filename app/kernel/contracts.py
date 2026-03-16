@@ -50,6 +50,7 @@ class PressureClass(str, Enum):
 class ConstraintReason(str, Enum):
     inactive_relationship = "INACTIVE_RELATIONSHIP"
     dependency_blocked = "DEPENDENCY_BLOCKED"
+    owner_excluded = "OWNER_EXCLUDED"
     hard_cooldown_active = "HARD_COOLDOWN_ACTIVE"
     hard_tension_block = "HARD_TENSION_BLOCK"
 
@@ -78,6 +79,7 @@ class RelationshipFacts(BaseModel):
     contact_timezone: str = "UTC"
     active: bool = True
     dependency_blocked: bool = False
+    owner_excluded: bool = False
     stage: str = "onboarded"
 
 

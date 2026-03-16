@@ -316,6 +316,33 @@ def test_decide_batch_endpoint(client):
     assert resp.status_code == 200
     data = resp.json()
     assert len(data["decisions"]) == 3
+    assert sorted(decision["person_id"] for decision in data["decisions"]) == ["batch-0", "batch-1", "batch-2"]
+
+
+def test_sweep_returns_external_person_id_not_internal_uuid(client):
+    client.post(
+        "/v1/relationships/events/inbound",
+        json={
+            "agent_id": "test-agent",
+            "person_id": "person-sweep",
+            "message_id": "msg-sweep-1",
+            "ts": "2026-01-05T12:00:00Z",
+        },
+    )
+
+    resp = client.post(
+        "/v1/relationships/sweep",
+        json={
+            "agent_id": "test-agent",
+            "ts": "2026-01-05T12:00:00Z",
+            "max_results": 10,
+        },
+    )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["decisions"]) == 1
+    assert data["decisions"][0]["person_id"] == "person-sweep"
 
 
 def test_health_check(client):

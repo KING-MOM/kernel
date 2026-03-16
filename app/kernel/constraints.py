@@ -43,6 +43,10 @@ class ConstraintGate:
             reasons.append(ConstraintReason.inactive_relationship)
             allowed = [ActionType.no_action]
 
+        if state.facts.owner_excluded:
+            reasons.append(ConstraintReason.owner_excluded)
+            allowed = [ActionType.no_action]
+
         if state.facts.dependency_blocked:
             reasons.append(ConstraintReason.dependency_blocked)
             allowed = [a for a in allowed if a not in SEND_ACTIONS]

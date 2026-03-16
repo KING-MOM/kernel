@@ -20,6 +20,7 @@ def build_relationship_state(rel: Relationship) -> RelationshipState:
             debt_created_at=rel.debt_created_at,
             active=bool(rel.active),
             dependency_blocked=bool(rel.dependency_blocked),
+            owner_excluded=bool(getattr(rel.person, "role", None) == "owner"),
             stage=rel.stage or "onboarded",
         ),
         inferred=RelationshipInferred(
