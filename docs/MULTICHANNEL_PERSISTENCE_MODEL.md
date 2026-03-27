@@ -232,6 +232,7 @@ Recommended reference adapter:
 `runtime_execute_send.py` is the primary generic implementation of the execution bridge contract.
 `openclaw_execute_send.py` is the OpenClaw-specific adapter.
 `claude_execute_send.py` remains as a compatibility wrapper around the generic runtime bridge.
+`runtime_sender_example.py` is a minimal sender template that shows the stdin/stdout contract expected by the generic bridge.
 
 The execution bridge contract is:
 

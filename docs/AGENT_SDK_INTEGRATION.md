@@ -132,6 +132,24 @@ The sender command must:
 {"message_id":"provider-message-id","delivered":true}
 ```
 
+Minimal example sender:
+
+- [runtime_sender_example.py](/Users/mau/Documents/New project/kernel/scripts/runtime_sender_example.py)
+
+End-to-end local example:
+
+```bash
+python scripts/runtime_execute_send.py \
+  --agent-id runtime-agent \
+  --channel whatsapp \
+  --target +5215554540593 \
+  --message "Hola Fernando" \
+  --action SEND_FULFILLMENT \
+  --reason "Kernel controlled execution" \
+  --ts 2026-03-27T12:00:00Z \
+  --sender-cmd -- python scripts/runtime_sender_example.py
+```
+
 ### Reference adapter: OpenClaw
 
 If you are sending through the live OpenClaw rail and want to preserve Kernel outcome attribution, use:

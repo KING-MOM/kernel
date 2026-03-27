@@ -195,6 +195,10 @@ python scripts/runtime_execute_send.py \
 
 `scripts/claude_execute_send.py` remains available as a compatibility wrapper if a Claude-based runtime wants a named entrypoint, but `scripts/runtime_execute_send.py` is the main generic path.
 
+Template sender for local/runtime integration testing:
+
+- [scripts/runtime_sender_example.py](/Users/mau/Documents/New project/kernel/scripts/runtime_sender_example.py)
+
 ## First End-to-End Sweep Test
 
 Start from a clean local DB and run one inbound + sweep cycle:
