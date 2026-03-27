@@ -95,6 +95,27 @@ python scripts/openclaw_kernel_tool.py decide ...
 python scripts/openclaw_kernel_tool.py sweep ...
 ```
 
+## Blessed execution bridge
+
+If you want to send through the live OpenClaw rail and preserve Kernel outcome attribution, use:
+
+```bash
+python scripts/openclaw_execute_send.py \
+  --agent-id openclaw-main \
+  --channel whatsapp \
+  --target +5215560663926 \
+  --message "German, una disculpa por dejar esto colgado." \
+  --action SEND_FULFILLMENT \
+  --reason "Kernel controlled execution" \
+  --ts 2026-03-27T12:00:00Z
+```
+
+This helper does three things in order:
+
+1. sends through the real OpenClaw rail
+2. records Kernel outbound with the real rail message id
+3. updates bridge-state person history so later replies can attach to the correct `outbox_id`
+
 ## Controlled execution guidance
 
 For new agents, start with:
@@ -122,6 +143,8 @@ So for any custom execution path:
 2. record Kernel outbound immediately
 3. keep bridge state or equivalent `outbox_id -> person` mapping
 4. record Kernel outcome when reply arrives
+
+The recommended way to satisfy all four at once is `scripts/openclaw_execute_send.py`.
 
 ## What Kernel is and is not
 

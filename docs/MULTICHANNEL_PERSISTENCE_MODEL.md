@@ -223,6 +223,17 @@ So for any custom sender:
 
 Without this, relationship state may still look roughly right, but attribution will be incomplete.
 
+Recommended helper:
+
+- [scripts/openclaw_execute_send.py](/Users/mau/Documents/New project/kernel/scripts/openclaw_execute_send.py)
+
+That helper:
+
+1. sends through OpenClaw
+2. records Kernel outbound
+3. marks delivered by default
+4. stores `personHistory` bridge state for later reply attribution
+
 ## 10. What Kernel should and should not own
 
 Kernel should own:

@@ -159,6 +159,19 @@ decision = client.decide(
 )
 ```
 
+Blessed execution helper for live rails + Kernel attribution:
+
+```bash
+python scripts/openclaw_execute_send.py \
+  --agent-id openclaw-main \
+  --channel whatsapp \
+  --target +5215560663926 \
+  --message "German, una disculpa por dejar esto colgado." \
+  --action SEND_FULFILLMENT \
+  --reason "Kernel controlled execution" \
+  --ts 2026-03-27T12:00:00Z
+```
+
 ## First End-to-End Sweep Test
 
 Start from a clean local DB and run one inbound + sweep cycle:
