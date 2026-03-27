@@ -135,6 +135,7 @@ The sender command must:
 Minimal example sender:
 
 - [runtime_sender_example.py](/Users/mau/Documents/New project/kernel/scripts/runtime_sender_example.py)
+- [runtime_sender_http.py](/Users/mau/Documents/New project/kernel/scripts/runtime_sender_http.py)
 
 End-to-end local example:
 
@@ -148,6 +149,23 @@ python scripts/runtime_execute_send.py \
   --reason "Kernel controlled execution" \
   --ts 2026-03-27T12:00:00Z \
   --sender-cmd -- python scripts/runtime_sender_example.py
+```
+
+HTTP-backed runtime example:
+
+```bash
+python scripts/runtime_execute_send.py \
+  --agent-id runtime-agent \
+  --channel whatsapp \
+  --target +5215554540593 \
+  --message "Hola Fernando" \
+  --action SEND_FULFILLMENT \
+  --reason "Kernel controlled execution" \
+  --ts 2026-03-27T12:00:00Z \
+  --sender-cmd -- python scripts/runtime_sender_http.py \
+    --url https://your-runtime.example/send \
+    --message-id-path payload.result.messageId \
+    --delivered-path payload.result.delivered
 ```
 
 ### Reference adapter: OpenClaw

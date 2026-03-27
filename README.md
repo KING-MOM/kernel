@@ -198,6 +198,7 @@ python scripts/runtime_execute_send.py \
 Template sender for local/runtime integration testing:
 
 - [scripts/runtime_sender_example.py](/Users/mau/Documents/New project/kernel/scripts/runtime_sender_example.py)
+- [scripts/runtime_sender_http.py](/Users/mau/Documents/New project/kernel/scripts/runtime_sender_http.py)
 
 ## First End-to-End Sweep Test
 
