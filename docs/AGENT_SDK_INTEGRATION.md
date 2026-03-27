@@ -106,6 +106,32 @@ What every runtime-specific execution bridge must do:
 3. keep a local attribution mapping so future replies can attach to the correct `outbox_id`
 4. record delivery/reply outcomes back into Kernel
 
+### Generic runtime adapter
+
+For any runtime that already owns its own sender, use:
+
+```bash
+python scripts/runtime_execute_send.py \
+  --agent-id runtime-agent \
+  --channel whatsapp \
+  --target +5215554540593 \
+  --message "Hola Fernando" \
+  --action SEND_FULFILLMENT \
+  --reason "Kernel controlled execution" \
+  --ts 2026-03-27T12:00:00Z \
+  --sender-cmd -- python /path/to/runtime_sender.py
+```
+
+The sender command must:
+
+1. read one JSON payload from stdin
+2. perform the real send in its own runtime
+3. write one JSON object to stdout with at least:
+
+```json
+{"message_id":"provider-message-id","delivered":true}
+```
+
 ### Reference adapter: OpenClaw
 
 If you are sending through the live OpenClaw rail and want to preserve Kernel outcome attribution, use:
@@ -127,33 +153,7 @@ This helper does three things in order:
 2. records Kernel outbound with the real rail message id
 3. updates bridge-state person history so later replies can attach to the correct `outbox_id`
 
-### Reference adapter: Claude agent
-
-If your Claude-based runtime has its own sender process, use:
-
-```bash
-python scripts/claude_execute_send.py \
-  --agent-id claude-agent \
-  --channel whatsapp \
-  --target +5215554540593 \
-  --message "Hola Fernando" \
-  --action SEND_FULFILLMENT \
-  --reason "Kernel controlled execution" \
-  --ts 2026-03-27T12:00:00Z \
-  --sender-cmd -- python /path/to/claude_sender.py
-```
-
-The sender command must:
-
-1. read one JSON payload from stdin
-2. perform the real send in the Claude runtime
-3. write one JSON object to stdout with at least:
-
-```json
-{"message_id":"provider-message-id","delivered":true}
-```
-
-That lets Kernel stay agnostic while Claude keeps control of its own transport layer.
+Claude-based agents should use the same generic adapter pattern above. `scripts/claude_execute_send.py` remains available as a compatibility wrapper, but `scripts/runtime_execute_send.py` is now the primary generic entrypoint.
 
 ## Controlled execution guidance
 
@@ -184,7 +184,7 @@ So for any custom execution path:
 4. record Kernel outcome when reply arrives
 
 The recommended way to satisfy all four at once in OpenClaw is `scripts/openclaw_execute_send.py`.
-For other runtimes, implement the same contract in your own execution adapter.
+For other runtimes, the primary generic entrypoint is `scripts/runtime_execute_send.py`.
 
 ## What Kernel is and is not
 

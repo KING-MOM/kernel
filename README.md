@@ -179,19 +179,21 @@ For other runtimes, implement the same execution bridge contract:
 3. keep local attribution state for `outbox_id`
 4. record delivery/reply outcomes back into Kernel
 
-Reference execution adapter for Claude-style runtimes:
+Primary generic runtime adapter:
 
 ```bash
-python scripts/claude_execute_send.py \
-  --agent-id claude-agent \
+python scripts/runtime_execute_send.py \
+  --agent-id runtime-agent \
   --channel whatsapp \
   --target +5215554540593 \
   --message "Hola Fernando" \
   --action SEND_FULFILLMENT \
   --reason "Kernel controlled execution" \
   --ts 2026-03-27T12:00:00Z \
-  --sender-cmd -- python /path/to/claude_sender.py
+  --sender-cmd -- python /path/to/runtime_sender.py
 ```
+
+`scripts/claude_execute_send.py` remains available as a compatibility wrapper if a Claude-based runtime wants a named entrypoint, but `scripts/runtime_execute_send.py` is the main generic path.
 
 ## First End-to-End Sweep Test
 

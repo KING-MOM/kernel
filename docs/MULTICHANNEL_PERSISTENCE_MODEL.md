@@ -225,10 +225,13 @@ Without this, relationship state may still look roughly right, but attribution w
 
 Recommended reference adapter:
 
+- [scripts/runtime_execute_send.py](/Users/mau/Documents/New project/kernel/scripts/runtime_execute_send.py)
 - [scripts/openclaw_execute_send.py](/Users/mau/Documents/New project/kernel/scripts/openclaw_execute_send.py)
 - [scripts/claude_execute_send.py](/Users/mau/Documents/New project/kernel/scripts/claude_execute_send.py)
 
-That helper is the OpenClaw implementation of the execution bridge contract. Other runtimes should implement the same pattern in their own adapter.
+`runtime_execute_send.py` is the primary generic implementation of the execution bridge contract.
+`openclaw_execute_send.py` is the OpenClaw-specific adapter.
+`claude_execute_send.py` remains as a compatibility wrapper around the generic runtime bridge.
 
 The execution bridge contract is:
 
@@ -237,19 +240,19 @@ The execution bridge contract is:
 3. keep local attribution state for `outbox_id`
 4. feed delivery/reply outcomes back into Kernel
 
+The generic runtime adapter:
+
+1. calls a runtime-specific sender command over stdin/stdout
+2. records Kernel outbound using the returned `message_id`
+3. stores `personHistory` bridge state for later reply attribution
+4. records delivery immediately when the sender confirms it
+
 The OpenClaw reference adapter:
 
 1. sends through OpenClaw
 2. records Kernel outbound
 3. marks delivered by default
 4. stores `personHistory` bridge state for later reply attribution
-
-The Claude reference adapter:
-
-1. calls a runtime-specific sender command over stdin/stdout
-2. records Kernel outbound using the returned `message_id`
-3. stores `personHistory` bridge state for later reply attribution
-4. records delivery immediately when the sender confirms it
 
 ## 10. What Kernel should and should not own
 
