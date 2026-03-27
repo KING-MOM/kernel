@@ -1,6 +1,6 @@
 # Kernel API
 
-Relationship physics engine for AI agents. Decides **when** to proactively reach out to people based on trust, tension, engagement, and temporal patterns. Designed to sit next to OpenClaw.
+Relationship physics engine for AI agents. Decides **when** to proactively reach out to people based on trust, tension, engagement, and temporal patterns. Kernel is runtime-agnostic and can sit next to OpenClaw or any other agent runtime.
 
 ## Quick Start
 
@@ -159,7 +159,7 @@ decision = client.decide(
 )
 ```
 
-Blessed execution helper for live rails + Kernel attribution:
+Reference execution adapter for OpenClaw rails + Kernel attribution:
 
 ```bash
 python scripts/openclaw_execute_send.py \
@@ -171,6 +171,13 @@ python scripts/openclaw_execute_send.py \
   --reason "Kernel controlled execution" \
   --ts 2026-03-27T12:00:00Z
 ```
+
+For other runtimes, implement the same execution bridge contract:
+
+1. send through the real rail
+2. record Kernel outbound with the real message id
+3. keep local attribution state for `outbox_id`
+4. record delivery/reply outcomes back into Kernel
 
 ## First End-to-End Sweep Test
 

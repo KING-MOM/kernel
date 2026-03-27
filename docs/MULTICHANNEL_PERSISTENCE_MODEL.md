@@ -223,11 +223,20 @@ So for any custom sender:
 
 Without this, relationship state may still look roughly right, but attribution will be incomplete.
 
-Recommended helper:
+Recommended reference adapter:
 
 - [scripts/openclaw_execute_send.py](/Users/mau/Documents/New project/kernel/scripts/openclaw_execute_send.py)
 
-That helper:
+That helper is the OpenClaw implementation of the execution bridge contract. Other runtimes should implement the same pattern in their own adapter.
+
+The execution bridge contract is:
+
+1. send through the real runtime transport
+2. record Kernel outbound immediately
+3. keep local attribution state for `outbox_id`
+4. feed delivery/reply outcomes back into Kernel
+
+The OpenClaw reference adapter:
 
 1. sends through OpenClaw
 2. records Kernel outbound

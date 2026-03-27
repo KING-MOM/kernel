@@ -95,9 +95,20 @@ python scripts/openclaw_kernel_tool.py decide ...
 python scripts/openclaw_kernel_tool.py sweep ...
 ```
 
-## Blessed execution bridge
+## Execution bridge contract
 
-If you want to send through the live OpenClaw rail and preserve Kernel outcome attribution, use:
+Kernel is runtime-agnostic. Any agent runtime can use it, including OpenClaw, Claude-based agents, cron workers, or custom backends.
+
+What every runtime-specific execution bridge must do:
+
+1. send through the real transport rail
+2. record Kernel outbound with the real rail message id
+3. keep a local attribution mapping so future replies can attach to the correct `outbox_id`
+4. record delivery/reply outcomes back into Kernel
+
+### Reference adapter: OpenClaw
+
+If you are sending through the live OpenClaw rail and want to preserve Kernel outcome attribution, use:
 
 ```bash
 python scripts/openclaw_execute_send.py \
@@ -135,7 +146,7 @@ Recommended rules:
 
 ## Outcome attribution warning
 
-If you send through a rail directly without the normal OpenClaw bridge bookkeeping, replies may update relationship state but fail to attach to the correct `outbox_id`.
+If you send through a rail directly without your runtime's attribution bookkeeping, replies may update relationship state but fail to attach to the correct `outbox_id`.
 
 So for any custom execution path:
 
@@ -144,7 +155,8 @@ So for any custom execution path:
 3. keep bridge state or equivalent `outbox_id -> person` mapping
 4. record Kernel outcome when reply arrives
 
-The recommended way to satisfy all four at once is `scripts/openclaw_execute_send.py`.
+The recommended way to satisfy all four at once in OpenClaw is `scripts/openclaw_execute_send.py`.
+For other runtimes, implement the same contract in your own execution adapter.
 
 ## What Kernel is and is not
 
