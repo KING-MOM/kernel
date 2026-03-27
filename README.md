@@ -45,6 +45,8 @@ curl -s http://localhost:8088/health
 
 - Math + hypotheses (objective functions, constraints, decay, aggregation):
   - [docs/KERNEL_MATH_AND_HYPOTHESES.md](/Users/mau/Documents/New project/kernel/docs/KERNEL_MATH_AND_HYPOTHESES.md)
+- Multichannel persistence and cross-rail identity model:
+  - [docs/MULTICHANNEL_PERSISTENCE_MODEL.md](/Users/mau/Documents/New project/kernel/docs/MULTICHANNEL_PERSISTENCE_MODEL.md)
 - Live rollout control policy:
   - [docs/LIVE_ROLLOUT_CONTROLS.md](/Users/mau/Documents/New project/kernel/docs/LIVE_ROLLOUT_CONTROLS.md)
 - Ops execution artifacts:
@@ -132,6 +134,7 @@ Blessed integration surfaces:
 
 Integrator guide:
 - [docs/AGENT_SDK_INTEGRATION.md](/Users/mau/Documents/New project/kernel/docs/AGENT_SDK_INTEGRATION.md)
+- [docs/MULTICHANNEL_PERSISTENCE_MODEL.md](/Users/mau/Documents/New project/kernel/docs/MULTICHANNEL_PERSISTENCE_MODEL.md)
 
 Minimal Python example:
 
