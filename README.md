@@ -121,6 +121,41 @@ python scripts/openclaw_kernel_tool.py inbound \
   --ts 2026-03-07T19:00:00Z
 ```
 
+## Agent SDK Usage
+
+Kernel is ready to be used by other agents as a relationship SDK/service.
+
+Blessed integration surfaces:
+- HTTP API
+- CLI wrapper
+- Python client: [app/kernel/client.py](/Users/mau/Documents/New project/kernel/app/kernel/client.py)
+
+Integrator guide:
+- [docs/AGENT_SDK_INTEGRATION.md](/Users/mau/Documents/New project/kernel/docs/AGENT_SDK_INTEGRATION.md)
+
+Minimal Python example:
+
+```python
+from app.kernel.client import KernelClient
+
+client = KernelClient(base_url="http://127.0.0.1:8088")
+
+client.inbound(
+    agent_id="openclaw-main",
+    person_id="person:+5215560663926",
+    message_id="whatsapp:abc123",
+    snippet="Si hablar por telefono",
+    channel="whatsapp",
+    ts="2026-03-20T16:16:18Z",
+)
+
+decision = client.decide(
+    agent_id="openclaw-main",
+    person_id="person:+5215560663926",
+    ts="2026-03-20T16:17:00Z",
+)
+```
+
 ## First End-to-End Sweep Test
 
 Start from a clean local DB and run one inbound + sweep cycle:
