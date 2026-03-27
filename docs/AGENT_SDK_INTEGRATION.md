@@ -127,6 +127,34 @@ This helper does three things in order:
 2. records Kernel outbound with the real rail message id
 3. updates bridge-state person history so later replies can attach to the correct `outbox_id`
 
+### Reference adapter: Claude agent
+
+If your Claude-based runtime has its own sender process, use:
+
+```bash
+python scripts/claude_execute_send.py \
+  --agent-id claude-agent \
+  --channel whatsapp \
+  --target +5215554540593 \
+  --message "Hola Fernando" \
+  --action SEND_FULFILLMENT \
+  --reason "Kernel controlled execution" \
+  --ts 2026-03-27T12:00:00Z \
+  --sender-cmd -- python /path/to/claude_sender.py
+```
+
+The sender command must:
+
+1. read one JSON payload from stdin
+2. perform the real send in the Claude runtime
+3. write one JSON object to stdout with at least:
+
+```json
+{"message_id":"provider-message-id","delivered":true}
+```
+
+That lets Kernel stay agnostic while Claude keeps control of its own transport layer.
+
 ## Controlled execution guidance
 
 For new agents, start with:

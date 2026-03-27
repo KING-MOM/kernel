@@ -179,6 +179,20 @@ For other runtimes, implement the same execution bridge contract:
 3. keep local attribution state for `outbox_id`
 4. record delivery/reply outcomes back into Kernel
 
+Reference execution adapter for Claude-style runtimes:
+
+```bash
+python scripts/claude_execute_send.py \
+  --agent-id claude-agent \
+  --channel whatsapp \
+  --target +5215554540593 \
+  --message "Hola Fernando" \
+  --action SEND_FULFILLMENT \
+  --reason "Kernel controlled execution" \
+  --ts 2026-03-27T12:00:00Z \
+  --sender-cmd -- python /path/to/claude_sender.py
+```
+
 ## First End-to-End Sweep Test
 
 Start from a clean local DB and run one inbound + sweep cycle:
