@@ -29,6 +29,8 @@ class OutboundEvent(BaseModel):
     parent_message_id: Optional[str] = None
     channel: Channel = Channel.email
     ts: datetime
+    intent_type: Optional[str] = None
+    rapport_eligible: bool = False
 
 
 class DecideRequest(BaseModel):
@@ -101,6 +103,7 @@ class DecideResponse(BaseModel):
     score_breakdown: Optional[Dict[str, float]] = None
     policy_version: Optional[str] = None
     parameter_set_version: Optional[str] = None
+    appropriateness_score: Optional[float] = None
 
 
 class Decision(BaseModel):
@@ -132,6 +135,7 @@ class SweepDecision(BaseModel):
     score_breakdown: Optional[Dict[str, float]] = None
     policy_version: Optional[str] = None
     parameter_set_version: Optional[str] = None
+    appropriateness_score: Optional[float] = None
 
 
 class SweepResponse(BaseModel):
@@ -176,6 +180,8 @@ class RelationshipResponse(BaseModel):
     last_outbound_at: Optional[datetime] = None
     next_decision_at: Optional[datetime] = None
     active: bool
+    rapport_score: Optional[float] = None
+    warmth_window_expires_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 

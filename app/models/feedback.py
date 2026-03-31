@@ -95,6 +95,27 @@ def record_outcome(db: Session, outbox_id: str, outcome: Dict[str, Any]) -> None
         rel.engagement_score = max(0.0, rel.engagement_score - 1.0)
 
 
+def recompute_rapport_score(db: Session, rel: Relationship) -> None:
+    """
+    Recompute rapport_score (0-10) from rapport-eligible outbox records in the last 60 days.
+    Only counts outbound messages where rapport_eligible=True and a reply was received.
+    """
+    cutoff = datetime.utcnow() - timedelta(days=60)
+    rapport_outbox = (
+        db.query(Outbox)
+        .filter(
+            Outbox.relationship_id == rel.id,
+            Outbox.sent_at > cutoff,
+            Outbox.rapport_eligible == True,
+        )
+        .all()
+    )
+    if not rapport_outbox:
+        return  # don't reset — preserve existing score when no data
+    replied = sum(1 for o in rapport_outbox if o.replied_at)
+    rel.rapport_score = (replied / len(rapport_outbox)) * 10.0
+
+
 def compute_churn_risk(db: Session, rel: Relationship) -> float:
     """Compute churn risk from recent outbox outcomes (last 30 days)."""
     cutoff = datetime.utcnow() - timedelta(days=30)

@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     trust_increment_inbound: float = 0.1
     trust_increment_outbound: float = 0.05
     tension_increment_outbound: float = 0.4
+    warmth_window_hours: float = 48.0
+    rapport_tension_threshold: float = 0.50
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

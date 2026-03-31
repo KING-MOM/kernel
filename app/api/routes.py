@@ -18,7 +18,7 @@ from app.models.physics import (
 from app.kernel.identities import person_id_aliases, canonical_person_external_id
 from app.models.lifecycle import transition_stage, apply_transition
 from app.models.temporal import get_golden_hours
-from app.models.feedback import record_outcome, compute_churn_risk
+from app.models.feedback import record_outcome, compute_churn_risk, recompute_rapport_score
 from app.api.auth import verify_api_key
 from app.api.dependencies import get_db
 from app.api.schemas import (
@@ -208,6 +208,7 @@ def record_outbound(event: OutboundEvent, db: Session = Depends(get_db)):
             "reason": event.reason,
             "parent_message_id": event.parent_message_id,
             "channel": event.channel.value,
+            "intent_type": event.intent_type,
         },
         created_at=now,
     )
@@ -215,9 +216,10 @@ def record_outbound(event: OutboundEvent, db: Session = Depends(get_db)):
     db.flush()
     _set_preferred_channel(person, event.channel)
 
-    react_to_event(rel, "message_sent", now)
+    react_to_event(rel, "message_sent", now, intent_type=event.intent_type)
     rel.next_decision_at = compute_next_decision_at(rel, now, event.action)
     _update_relationship_metrics(db, rel, now)
+    recompute_rapport_score(db, rel)
 
     # Create outbox record for outcome tracking
     outbox = Outbox(
@@ -226,6 +228,8 @@ def record_outbound(event: OutboundEvent, db: Session = Depends(get_db)):
         action=event.action,
         channel=event.channel.value,
         sent_at=now,
+        intent_type=event.intent_type,
+        rapport_eligible=event.rapport_eligible,
     )
     db.add(outbox)
     db.flush()
@@ -281,6 +285,7 @@ def decide(event: DecideRequest, db: Session = Depends(get_db)):
         score_breakdown=decision.score_breakdown,
         policy_version=decision.policy_version,
         parameter_set_version=decision.parameter_set_version,
+        appropriateness_score=decision.appropriateness_score,
     )
 
 
@@ -372,6 +377,7 @@ def sweep(event: SweepRequest, db: Session = Depends(get_db)):
             score_breakdown=decision.score_breakdown,
             policy_version=decision.policy_version,
             parameter_set_version=decision.parameter_set_version,
+            appropriateness_score=decision.appropriateness_score,
         ))
 
     # Find the next sweep time
@@ -422,6 +428,15 @@ def record_event_outcome(event: OutcomeEvent, db: Session = Depends(get_db)):
         outcome_data["negative_signal"] = event.negative_signal
 
     record_outcome(db, event.outbox_id, outcome_data)
+
+    # Recompute rapport score if outcome touches a rapport-eligible send
+    outbox_record = db.query(Outbox).filter(Outbox.id == event.outbox_id).first()
+    if outbox_record and outbox_record.rapport_eligible:
+        from app.models.core import Relationship as Rel
+        rel_for_rapport = db.query(Rel).filter(Rel.id == outbox_record.relationship_id).first()
+        if rel_for_rapport:
+            recompute_rapport_score(db, rel_for_rapport)
+
     db.commit()
 
     return OutcomeResponse(status="ok")

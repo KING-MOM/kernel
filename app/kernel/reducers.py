@@ -22,6 +22,7 @@ def build_relationship_state(rel: Relationship) -> RelationshipState:
             dependency_blocked=bool(rel.dependency_blocked),
             owner_excluded=bool(getattr(rel.person, "role", None) == "owner"),
             stage=rel.stage or "onboarded",
+            warmth_window_expires_at=getattr(rel, "warmth_window_expires_at", None),
         ),
         inferred=RelationshipInferred(
             trust_score=rel.trust_score,
@@ -29,6 +30,7 @@ def build_relationship_state(rel: Relationship) -> RelationshipState:
             reply_debt=rel.intent_debt,
             engagement_score=getattr(rel, "engagement_score", 50.0) or 50.0,
             churn_risk=getattr(rel, "churn_risk", 0.0) or 0.0,
+            rapport_score=getattr(rel, "rapport_score", 0.0) or 0.0,
         ),
     )
 
