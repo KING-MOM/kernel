@@ -57,6 +57,8 @@ class Relationship(Base):
     priority: Mapped[int] = mapped_column(Integer, default=5)
     cadence_days: Mapped[float] = mapped_column(Float, default=7.0)
     next_decision_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    warmth_window_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    rapport_score: Mapped[float] = mapped_column(Float, default=0.0)
 
     person: Mapped["Person"] = relationship(back_populates="relationships")
     events: Mapped[List["Event"]] = relationship(back_populates="relationship")
@@ -108,6 +110,8 @@ class Outbox(Base):
     replied_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     reply_sentiment: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     outcome_payload: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    intent_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    rapport_eligible: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
 
 
 class ContactWindow(Base):

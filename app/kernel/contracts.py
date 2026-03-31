@@ -35,6 +35,9 @@ class ActionType(str, Enum):
     send_nudge = "SEND_NUDGE"
     send_gentle_ping = "SEND_GENTLE_PING"
     send_with_apology = "SEND_WITH_APOLOGY"
+    send_warm_checkin = "SEND_WARM_CHECKIN"
+    send_value_drop = "SEND_VALUE_DROP"
+    send_contextual_followup = "SEND_CONTEXTUAL_FOLLOWUP"
     wait = "WAIT"
     no_action = "NO_ACTION"
     internal_alert = "INTERNAL_ALERT"
@@ -81,6 +84,7 @@ class RelationshipFacts(BaseModel):
     dependency_blocked: bool = False
     owner_excluded: bool = False
     stage: str = "onboarded"
+    warmth_window_expires_at: Optional[datetime] = None
 
 
 class RelationshipInferred(BaseModel):
@@ -89,6 +93,8 @@ class RelationshipInferred(BaseModel):
     reply_debt: int = 0
     engagement_score: float = Field(50.0, ge=0.0, le=100.0)
     churn_risk: float = Field(0.0, ge=0.0, le=1.0)
+    appropriateness_score: float = Field(0.5, ge=0.0, le=1.0)
+    rapport_score: float = Field(0.0, ge=0.0, le=10.0)
 
 
 class RelationshipState(BaseModel):
@@ -117,3 +123,4 @@ class DecisionResult(BaseModel):
     policy_version: str = "v1.1"
     parameter_set_version: str = "baseline-2026-03-08"
     confidence: float = Field(0.5, ge=0.0, le=1.0)
+    appropriateness_score: float = Field(0.5, ge=0.0, le=1.0)
